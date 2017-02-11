@@ -39,20 +39,7 @@ Section Cross References
     stm32f4xx_gpio.o(i.GPIO_DeInit) refers to stm32f4xx_rcc.o(i.RCC_AHB1PeriphResetCmd) for RCC_AHB1PeriphResetCmd
     stm32f4xx_rcc.o(i.RCC_GetClocksFreq) refers to stm32f4xx_rcc.o(.data) for APBAHBPrescTable
     stm32f4xx_rcc.o(i.RCC_WaitForHSEStartUp) refers to stm32f4xx_rcc.o(i.RCC_GetFlagStatus) for RCC_GetFlagStatus
-    startup_stm32f40_41xxx.o(STACK) refers (Special) to heapauxi.o(.text) for __use_two_region_memory
-    startup_stm32f40_41xxx.o(HEAP) refers (Special) to heapauxi.o(.text) for __use_two_region_memory
-    startup_stm32f40_41xxx.o(RESET) refers (Special) to heapauxi.o(.text) for __use_two_region_memory
-    startup_stm32f40_41xxx.o(RESET) refers to startup_stm32f40_41xxx.o(STACK) for __initial_sp
-    startup_stm32f40_41xxx.o(RESET) refers to startup_stm32f40_41xxx.o(.text) for Reset_Handler
-    startup_stm32f40_41xxx.o(RESET) refers to main.o(i.EXTI0_IRQHandler) for EXTI0_IRQHandler
-    startup_stm32f40_41xxx.o(RESET) refers to main.o(i.TIM2_IRQHandler) for TIM2_IRQHandler
-    startup_stm32f40_41xxx.o(.text) refers (Special) to heapauxi.o(.text) for __use_two_region_memory
-    startup_stm32f40_41xxx.o(.text) refers to system_stm32f4xx.o(i.SystemInit) for SystemInit
-    startup_stm32f40_41xxx.o(.text) refers to __main.o(!!!main) for __main
-    startup_stm32f40_41xxx.o(.text) refers to startup_stm32f40_41xxx.o(HEAP) for Heap_Mem
-    startup_stm32f40_41xxx.o(.text) refers to startup_stm32f40_41xxx.o(STACK) for Stack_Mem
-    system_stm32f4xx.o(i.SystemCoreClockUpdate) refers to system_stm32f4xx.o(.data) for SystemCoreClock
-    system_stm32f4xx.o(i.SystemInit) refers to system_stm32f4xx.o(i.SetSysClock) for SetSysClock
+    stm32f4xx_syscfg.o(i.SYSCFG_DeInit) refers to stm32f4xx_rcc.o(i.RCC_APB2PeriphResetCmd) for RCC_APB2PeriphResetCmd
     stm32f4xx_tim.o(i.TIM_DeInit) refers to stm32f4xx_rcc.o(i.RCC_APB2PeriphResetCmd) for RCC_APB2PeriphResetCmd
     stm32f4xx_tim.o(i.TIM_DeInit) refers to stm32f4xx_rcc.o(i.RCC_APB1PeriphResetCmd) for RCC_APB1PeriphResetCmd
     stm32f4xx_tim.o(i.TIM_ETRClockMode1Config) refers to stm32f4xx_tim.o(i.TIM_ETRConfig) for TIM_ETRConfig
@@ -73,7 +60,20 @@ Section Cross References
     stm32f4xx_tim.o(i.TIM_TIxExternalClockConfig) refers to stm32f4xx_tim.o(i.TI2_Config) for TI2_Config
     stm32f4xx_tim.o(i.TIM_TIxExternalClockConfig) refers to stm32f4xx_tim.o(i.TI1_Config) for TI1_Config
     stm32f4xx_tim.o(i.TIM_TIxExternalClockConfig) refers to stm32f4xx_tim.o(i.TIM_SelectInputTrigger) for TIM_SelectInputTrigger
-    stm32f4xx_syscfg.o(i.SYSCFG_DeInit) refers to stm32f4xx_rcc.o(i.RCC_APB2PeriphResetCmd) for RCC_APB2PeriphResetCmd
+    startup_stm32f40_41xxx.o(STACK) refers (Special) to heapauxi.o(.text) for __use_two_region_memory
+    startup_stm32f40_41xxx.o(HEAP) refers (Special) to heapauxi.o(.text) for __use_two_region_memory
+    startup_stm32f40_41xxx.o(RESET) refers (Special) to heapauxi.o(.text) for __use_two_region_memory
+    startup_stm32f40_41xxx.o(RESET) refers to startup_stm32f40_41xxx.o(STACK) for __initial_sp
+    startup_stm32f40_41xxx.o(RESET) refers to startup_stm32f40_41xxx.o(.text) for Reset_Handler
+    startup_stm32f40_41xxx.o(RESET) refers to main.o(i.EXTI0_IRQHandler) for EXTI0_IRQHandler
+    startup_stm32f40_41xxx.o(RESET) refers to main.o(i.TIM2_IRQHandler) for TIM2_IRQHandler
+    startup_stm32f40_41xxx.o(.text) refers (Special) to heapauxi.o(.text) for __use_two_region_memory
+    startup_stm32f40_41xxx.o(.text) refers to system_stm32f4xx.o(i.SystemInit) for SystemInit
+    startup_stm32f40_41xxx.o(.text) refers to __main.o(!!!main) for __main
+    startup_stm32f40_41xxx.o(.text) refers to startup_stm32f40_41xxx.o(HEAP) for Heap_Mem
+    startup_stm32f40_41xxx.o(.text) refers to startup_stm32f40_41xxx.o(STACK) for Stack_Mem
+    system_stm32f4xx.o(i.SystemCoreClockUpdate) refers to system_stm32f4xx.o(.data) for SystemCoreClock
+    system_stm32f4xx.o(i.SystemInit) refers to system_stm32f4xx.o(i.SetSysClock) for SetSysClock
     __main.o(!!!main) refers to __rtentry.o(.ARM.Collect$$rtentry$$00000000) for __rt_entry
     __rtentry.o(.ARM.Collect$$rtentry$$00000000) refers (Special) to __rtentry2.o(.ARM.Collect$$rtentry$$0000000A) for __rt_entry_li
     __rtentry.o(.ARM.Collect$$rtentry$$00000000) refers (Special) to __rtentry2.o(.ARM.Collect$$rtentry$$0000000D) for __rt_entry_main
@@ -189,6 +189,14 @@ Removing Unused input sections from the image.
     Removing misc.o(i.NVIC_SetVectorTable), (20 bytes).
     Removing misc.o(i.NVIC_SystemLPConfig), (32 bytes).
     Removing misc.o(i.SysTick_CLKSourceConfig), (40 bytes).
+    Removing stm32f4xx_exti.o(.rev16_text), (4 bytes).
+    Removing stm32f4xx_exti.o(.revsh_text), (4 bytes).
+    Removing stm32f4xx_exti.o(.rrx_text), (6 bytes).
+    Removing stm32f4xx_exti.o(i.EXTI_ClearFlag), (12 bytes).
+    Removing stm32f4xx_exti.o(i.EXTI_DeInit), (36 bytes).
+    Removing stm32f4xx_exti.o(i.EXTI_GenerateSWInterrupt), (16 bytes).
+    Removing stm32f4xx_exti.o(i.EXTI_GetFlagStatus), (24 bytes).
+    Removing stm32f4xx_exti.o(i.EXTI_StructInit), (16 bytes).
     Removing stm32f4xx_gpio.o(.rev16_text), (4 bytes).
     Removing stm32f4xx_gpio.o(.revsh_text), (4 bytes).
     Removing stm32f4xx_gpio.o(.rrx_text), (6 bytes).
@@ -257,11 +265,15 @@ Removing Unused input sections from the image.
     Removing stm32f4xx_rcc.o(i.RCC_TIMCLKPresConfig), (12 bytes).
     Removing stm32f4xx_rcc.o(i.RCC_WaitForHSEStartUp), (56 bytes).
     Removing stm32f4xx_rcc.o(.data), (16 bytes).
-    Removing system_stm32f4xx.o(.rev16_text), (4 bytes).
-    Removing system_stm32f4xx.o(.revsh_text), (4 bytes).
-    Removing system_stm32f4xx.o(.rrx_text), (6 bytes).
-    Removing system_stm32f4xx.o(i.SystemCoreClockUpdate), (192 bytes).
-    Removing system_stm32f4xx.o(.data), (20 bytes).
+    Removing stm32f4xx_syscfg.o(.rev16_text), (4 bytes).
+    Removing stm32f4xx_syscfg.o(.revsh_text), (4 bytes).
+    Removing stm32f4xx_syscfg.o(.rrx_text), (6 bytes).
+    Removing stm32f4xx_syscfg.o(i.SYSCFG_CompensationCellCmd), (12 bytes).
+    Removing stm32f4xx_syscfg.o(i.SYSCFG_DeInit), (22 bytes).
+    Removing stm32f4xx_syscfg.o(i.SYSCFG_ETH_MediaInterfaceConfig), (12 bytes).
+    Removing stm32f4xx_syscfg.o(i.SYSCFG_GetCompensationCellStatus), (24 bytes).
+    Removing stm32f4xx_syscfg.o(i.SYSCFG_MemoryRemapConfig), (12 bytes).
+    Removing stm32f4xx_syscfg.o(i.SYSCFG_MemorySwappingBank), (12 bytes).
     Removing stm32f4xx_tim.o(.rev16_text), (4 bytes).
     Removing stm32f4xx_tim.o(.revsh_text), (4 bytes).
     Removing stm32f4xx_tim.o(.rrx_text), (6 bytes).
@@ -352,23 +364,11 @@ Removing Unused input sections from the image.
     Removing stm32f4xx_tim.o(i.TIM_TimeBaseStructInit), (18 bytes).
     Removing stm32f4xx_tim.o(i.TIM_UpdateDisableConfig), (24 bytes).
     Removing stm32f4xx_tim.o(i.TIM_UpdateRequestConfig), (24 bytes).
-    Removing stm32f4xx_exti.o(.rev16_text), (4 bytes).
-    Removing stm32f4xx_exti.o(.revsh_text), (4 bytes).
-    Removing stm32f4xx_exti.o(.rrx_text), (6 bytes).
-    Removing stm32f4xx_exti.o(i.EXTI_ClearFlag), (12 bytes).
-    Removing stm32f4xx_exti.o(i.EXTI_DeInit), (36 bytes).
-    Removing stm32f4xx_exti.o(i.EXTI_GenerateSWInterrupt), (16 bytes).
-    Removing stm32f4xx_exti.o(i.EXTI_GetFlagStatus), (24 bytes).
-    Removing stm32f4xx_exti.o(i.EXTI_StructInit), (16 bytes).
-    Removing stm32f4xx_syscfg.o(.rev16_text), (4 bytes).
-    Removing stm32f4xx_syscfg.o(.revsh_text), (4 bytes).
-    Removing stm32f4xx_syscfg.o(.rrx_text), (6 bytes).
-    Removing stm32f4xx_syscfg.o(i.SYSCFG_CompensationCellCmd), (12 bytes).
-    Removing stm32f4xx_syscfg.o(i.SYSCFG_DeInit), (22 bytes).
-    Removing stm32f4xx_syscfg.o(i.SYSCFG_ETH_MediaInterfaceConfig), (12 bytes).
-    Removing stm32f4xx_syscfg.o(i.SYSCFG_GetCompensationCellStatus), (24 bytes).
-    Removing stm32f4xx_syscfg.o(i.SYSCFG_MemoryRemapConfig), (12 bytes).
-    Removing stm32f4xx_syscfg.o(i.SYSCFG_MemorySwappingBank), (12 bytes).
+    Removing system_stm32f4xx.o(.rev16_text), (4 bytes).
+    Removing system_stm32f4xx.o(.revsh_text), (4 bytes).
+    Removing system_stm32f4xx.o(.rrx_text), (6 bytes).
+    Removing system_stm32f4xx.o(i.SystemCoreClockUpdate), (192 bytes).
+    Removing system_stm32f4xx.o(.data), (20 bytes).
 
 190 unused section(s) (total 5794 bytes) removed from the image.
 
@@ -401,10 +401,10 @@ Image Symbol Table
     ../clib/angel/sysapp.c                   0x00000000   Number         0  sys_wrch.o ABSOLUTE
     ../clib/angel/sysapp.c                   0x00000000   Number         0  sys_command.o ABSOLUTE
     ../clib/angel/sysapp.c                   0x00000000   Number         0  sys_exit.o ABSOLUTE
+    ../clib/armsys.c                         0x00000000   Number         0  argv_veneer.o ABSOLUTE
+    ../clib/armsys.c                         0x00000000   Number         0  argv_veneer.o ABSOLUTE
     ../clib/armsys.c                         0x00000000   Number         0  _get_argv_nomalloc.o ABSOLUTE
     ../clib/armsys.c                         0x00000000   Number         0  no_argv.o ABSOLUTE
-    ../clib/armsys.c                         0x00000000   Number         0  argv_veneer.o ABSOLUTE
-    ../clib/armsys.c                         0x00000000   Number         0  argv_veneer.o ABSOLUTE
     ../clib/heapalloc.c                      0x00000000   Number         0  hrguard.o ABSOLUTE
     ../clib/heapaux.c                        0x00000000   Number         0  heapauxi.o ABSOLUTE
     ../clib/libinit.s                        0x00000000   Number         0  libshutdown2.o ABSOLUTE
@@ -779,7 +779,7 @@ Memory Map of the image
 
     Base Addr    Size         Type   Attr      Idx    E Section Name        Object
 
-    0x08000000   0x00000188   Data   RO          608    RESET               startup_stm32f40_41xxx.o
+    0x08000000   0x00000188   Data   RO         1300    RESET               startup_stm32f40_41xxx.o
     0x08000188   0x00000008   Code   RO         1350  * !!!main             c_w.l(__main.o)
     0x08000190   0x00000034   Code   RO         1507    !!!scatter          c_w.l(__scatter.o)
     0x080001c4   0x0000001a   Code   RO         1509    !!handler_copy      c_w.l(__scatter_copy.o)
@@ -827,7 +827,7 @@ Memory Map of the image
     0x0800021c   0x00000004   Code   RO         1430    .ARM.Collect$$rtexit$$00000003  c_w.l(rtexit2.o)
     0x08000220   0x00000006   Code   RO         1431    .ARM.Collect$$rtexit$$00000004  c_w.l(rtexit2.o)
     0x08000226   0x00000002   PAD
-    0x08000228   0x00000040   Code   RO          609  * .text               startup_stm32f40_41xxx.o
+    0x08000228   0x00000040   Code   RO         1301  * .text               startup_stm32f40_41xxx.o
     0x08000268   0x00000006   Code   RO         1348    .text               c_w.l(heapauxi.o)
     0x0800026e   0x0000004a   Code   RO         1368    .text               c_w.l(sys_stackheap_outer.o)
     0x080002b8   0x00000012   Code   RO         1370    .text               c_w.l(exit.o)
@@ -838,31 +838,31 @@ Memory Map of the image
     0x080002e2   0x00000000   Code   RO         1452    .text               c_w.l(indicate_semi.o)
     0x080002e2   0x00000002   PAD
     0x080002e4   0x00000020   Code   RO            4    i.EXTI0_IRQHandler  main.o
-    0x08000304   0x0000000c   Code   RO         1224    i.EXTI_ClearITPendingBit  stm32f4xx_exti.o
-    0x08000310   0x00000018   Code   RO         1228    i.EXTI_GetITStatus  stm32f4xx_exti.o
-    0x08000328   0x00000094   Code   RO         1229    i.EXTI_Init         stm32f4xx_exti.o
+    0x08000304   0x0000000c   Code   RO          176    i.EXTI_ClearITPendingBit  stm32f4xx_exti.o
+    0x08000310   0x00000018   Code   RO          180    i.EXTI_GetITStatus  stm32f4xx_exti.o
+    0x08000328   0x00000094   Code   RO          181    i.EXTI_Init         stm32f4xx_exti.o
     0x080003bc   0x00000020   Code   RO            5    i.EnableEXTIInterrupt  main.o
     0x080003dc   0x00000020   Code   RO            6    i.EnableTimerInterrupt  main.o
-    0x080003fc   0x00000090   Code   RO          176    i.GPIO_Init         stm32f4xx_gpio.o
-    0x0800048c   0x00000008   Code   RO          186    i.GPIO_ToggleBits   stm32f4xx_gpio.o
+    0x080003fc   0x00000090   Code   RO          242    i.GPIO_Init         stm32f4xx_gpio.o
+    0x0800048c   0x00000008   Code   RO          252    i.GPIO_ToggleBits   stm32f4xx_gpio.o
     0x08000494   0x00000030   Code   RO            7    i.InitButton        main.o
     0x080004c4   0x00000030   Code   RO            8    i.InitEXTI          main.o
     0x080004f4   0x00000030   Code   RO            9    i.InitLEDs          main.o
     0x08000524   0x00000044   Code   RO           10    i.InitTimers        main.o
     0x08000568   0x00000078   Code   RO          127    i.NVIC_Init         misc.o
-    0x080005e0   0x00000020   Code   RO          277    i.RCC_AHB1PeriphClockCmd  stm32f4xx_rcc.o
-    0x08000600   0x00000020   Code   RO          286    i.RCC_APB1PeriphClockCmd  stm32f4xx_rcc.o
-    0x08000620   0x00000020   Code   RO          289    i.RCC_APB2PeriphClockCmd  stm32f4xx_rcc.o
-    0x08000640   0x00000040   Code   RO         1292    i.SYSCFG_EXTILineConfig  stm32f4xx_syscfg.o
-    0x08000680   0x000000ec   Code   RO          616    i.SetSysClock       system_stm32f4xx.o
-    0x0800076c   0x00000068   Code   RO          618    i.SystemInit        system_stm32f4xx.o
+    0x080005e0   0x00000020   Code   RO          343    i.RCC_AHB1PeriphClockCmd  stm32f4xx_rcc.o
+    0x08000600   0x00000020   Code   RO          352    i.RCC_APB1PeriphClockCmd  stm32f4xx_rcc.o
+    0x08000620   0x00000020   Code   RO          355    i.RCC_APB2PeriphClockCmd  stm32f4xx_rcc.o
+    0x08000640   0x00000040   Code   RO          678    i.SYSCFG_EXTILineConfig  stm32f4xx_syscfg.o
+    0x08000680   0x000000ec   Code   RO         1308    i.SetSysClock       system_stm32f4xx.o
+    0x0800076c   0x00000068   Code   RO         1310    i.SystemInit        system_stm32f4xx.o
     0x080007d4   0x00000024   Code   RO           11    i.TIM2_IRQHandler   main.o
-    0x080007f8   0x00000006   Code   RO          668    i.TIM_ClearITPendingBit  stm32f4xx_tim.o
-    0x080007fe   0x00000018   Code   RO          673    i.TIM_Cmd           stm32f4xx_tim.o
-    0x08000816   0x00000022   Code   RO          694    i.TIM_GetITStatus   stm32f4xx_tim.o
-    0x08000838   0x00000012   Code   RO          698    i.TIM_ITConfig      stm32f4xx_tim.o
+    0x080007f8   0x00000006   Code   RO          746    i.TIM_ClearITPendingBit  stm32f4xx_tim.o
+    0x080007fe   0x00000018   Code   RO          751    i.TIM_Cmd           stm32f4xx_tim.o
+    0x08000816   0x00000022   Code   RO          772    i.TIM_GetITStatus   stm32f4xx_tim.o
+    0x08000838   0x00000012   Code   RO          776    i.TIM_ITConfig      stm32f4xx_tim.o
     0x0800084a   0x00000002   PAD
-    0x0800084c   0x00000084   Code   RO          745    i.TIM_TimeBaseInit  stm32f4xx_tim.o
+    0x0800084c   0x00000084   Code   RO          823    i.TIM_TimeBaseInit  stm32f4xx_tim.o
     0x080008d0   0x00000040   Code   RO           12    i.main              main.o
     0x08000910   0x0000000a   Code   RO         1437    x$fpl$fpinit        fz_wm.l(fpinit.o)
     0x0800091a   0x00000002   PAD
@@ -883,8 +883,8 @@ Memory Map of the image
     0x20000018   0x0000000c   Zero   RW           13    .bss                main.o
     0x20000024   0x00000060   Zero   RW         1379    .bss                c_w.l(libspace.o)
     0x20000084   0x00000004   PAD
-    0x20000088   0x00000200   Zero   RW          607    HEAP                startup_stm32f40_41xxx.o
-    0x20000288   0x00000400   Zero   RW          606    STACK               startup_stm32f40_41xxx.o
+    0x20000088   0x00000200   Zero   RW         1299    HEAP                startup_stm32f40_41xxx.o
+    0x20000288   0x00000400   Zero   RW         1298    STACK               startup_stm32f40_41xxx.o
 
 
 ==============================================================================
