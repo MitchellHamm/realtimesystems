@@ -5,6 +5,7 @@ TIM_TimeBaseInitTypeDef timer_InitStructure;
 EXTI_InitTypeDef EXTI_InitStructure;
 NVIC_InitTypeDef nvicStructure;
 NVIC_InitTypeDef NVIC_InitStructure;
+int brewTimes[4] = {30, 40, 45, 50};
 
 void InitLEDs()
 {
