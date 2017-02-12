@@ -82,7 +82,7 @@ void TIM2_IRQHandler()
     if (TIM_GetITStatus(TIM2, TIM_IT_Update) != RESET)
     {
         TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
-        GPIO_ToggleBits(GPIOD, GPIO_Pin_15);
+        //GPIO_ToggleBits(GPIOD, GPIO_Pin_15);
     }
 }
 
@@ -97,6 +97,42 @@ void EXTI0_IRQHandler()
     }
 }
 
+void Brew(int selection)
+{
+	//Must adjust brew time since the timer is 500ms
+	int brewTime = brewTimes[selection] * 2;
+	int iterations = 0;
+	
+	while(iterations <= brewTime)
+	{
+		if (TIM_GetITStatus(TIM2, TIM_IT_Update) != RESET)
+    {
+        TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
+			
+				if(selection == 0)
+				{
+					GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
+				}
+				else if(selection == 1)
+				{
+					GPIO_ToggleBits(GPIOD, GPIO_Pin_13);
+				}
+				else if(selection == 2)
+				{
+					GPIO_ToggleBits(GPIOD, GPIO_Pin_14);
+				}
+				else if(selection == 3)
+				{
+					GPIO_ToggleBits(GPIOD, GPIO_Pin_15);
+				}
+				iterations++;
+    }
+	}
+	
+	//Finished brewing play sound
+	
+}
+
 int main() {
 	InitLEDs();
 	InitTimers();
@@ -105,11 +141,6 @@ int main() {
 	InitEXTI();
 	EnableEXTIInterrupt();
 	
-	while(1){
-		int i = 0;
-		for (i = 0; i < 1000000; i++)
-    1+1;
-		GPIO_ToggleBits(GPIOD, GPIO_Pin_13);
-	}
+	Brew(1);
 
 }
