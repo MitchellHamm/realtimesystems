@@ -23,9 +23,9 @@ void InitTimers()
 {
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
       
-  timer_InitStructure.TIM_Prescaler = 83;
+  timer_InitStructure.TIM_Prescaler = 839;
   timer_InitStructure.TIM_CounterMode = TIM_CounterMode_Up;
-  timer_InitStructure.TIM_Period = 99999;
+  timer_InitStructure.TIM_Period = 49999;
   timer_InitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
   timer_InitStructure.TIM_RepetitionCounter = 0;
   TIM_TimeBaseInit(TIM2, &timer_InitStructure);
@@ -77,14 +77,14 @@ void EnableEXTIInterrupt()
     NVIC_Init(&NVIC_InitStructure);
 }
 
-void TIM2_IRQHandler()
+/*void TIM2_IRQHandler()
 {
     if (TIM_GetITStatus(TIM2, TIM_IT_Update) != RESET)
     {
         TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
         //GPIO_ToggleBits(GPIOD, GPIO_Pin_15);
     }
-}
+}*/
 
 void EXTI0_IRQHandler()
 {
@@ -97,11 +97,24 @@ void EXTI0_IRQHandler()
     }
 }
 
-void Brew(int selection)
+void Brew()
 {
 	//Must adjust brew time since the timer is 500ms
-	int brewTime = brewTimes[selection] * 2;
+	int selection = 0;
+	int brewTime = 0;
 	int iterations = 0;
+	
+	if(GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_12)) {
+		selection = 0;
+	} else if(GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_13)) {
+		selection = 1;
+	} else if(GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_14)) {
+		selection = 2;
+	} else if(GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_15)) {
+		selection = 3;
+	}
+	
+	brewTime =  brewTimes[selection] * 2;
 	
 	while(iterations <= brewTime)
 	{
@@ -136,11 +149,13 @@ void Brew(int selection)
 int main() {
 	InitLEDs();
 	InitTimers();
-	EnableTimerInterrupt();
+	//EnableTimerInterrupt();
 	InitButton();
 	InitEXTI();
 	EnableEXTIInterrupt();
 	
-	Brew(1);
+	GPIO_ToggleBits(GPIOD, GPIO_Pin_13);
+	
+	Brew();
 
 }
