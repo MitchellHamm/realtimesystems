@@ -1,4 +1,5 @@
 #include "stm32f4xx.h"
+#include "main.h"
 
 GPIO_InitTypeDef GPIO_Initstructure;
 TIM_TimeBaseInitTypeDef timer_InitStructure;
@@ -6,6 +7,7 @@ EXTI_InitTypeDef EXTI_InitStructure;
 NVIC_InitTypeDef nvicStructure;
 NVIC_InitTypeDef NVIC_InitStructure;
 int brewTimes[4] = {30, 40, 45, 50};
+fir_8 filt;
 
 void InitLEDs()
 {
@@ -103,6 +105,7 @@ void Brew()
 	int selection = 0;
 	int brewTime = 0;
 	int iterations = 0;
+	int i = 0;
 	
 	if(GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_12)) {
 		selection = 0;
@@ -143,7 +146,68 @@ void Brew()
 	}
 	
 	//Finished brewing play sound
+	//Just use a crude loop to play the sound for roughly 1 second
+	while(i < 4800000) {
+		if (SPI_I2S_GetFlagStatus(CODEC_I2S, SPI_I2S_FLAG_TXE))
+    	{
+    		SPI_I2S_SendData(CODEC_I2S, sample);
+
+    		//only update on every second sample to insure that L & R ch. have the same sample value
+    		if (sampleCounter & 0x00000001)
+    		{
+    			sawWave += NOTEFREQUENCY;
+    			if (sawWave > 1.0)
+    				sawWave -= 2.0;
+
+    			filteredSaw = updateFilter(&filt, sawWave);
+    			sample = (int16_t)(NOTEAMPLITUDE*filteredSaw);
+    		}
+    		sampleCounter++;
+    	}
+		i++;
+	}
 	
+}
+
+float updateFilter(fir_8* filt, float val)
+{
+	uint16_t valIndex;
+	uint16_t paramIndex;
+	float outval = 0.0;
+
+	valIndex = filt->currIndex;
+	filt->tabs[valIndex] = val;
+
+	for (paramIndex=0; paramIndex<8; paramIndex++)
+	{
+		outval += (filt->params[paramIndex]) * (filt->tabs[(valIndex+paramIndex)&0x07]);
+	}
+
+	valIndex++;
+	valIndex &= 0x07;
+
+	filt->currIndex = valIndex;
+
+	return outval;
+}
+
+void initFilter(fir_8* theFilter)
+{
+	uint8_t i;
+
+	theFilter->currIndex = 0;
+
+	for (i=0; i<8; i++)
+		theFilter->tabs[i] = 0.0;
+
+	theFilter->params[0] = 0.01;
+	theFilter->params[1] = 0.05;
+	theFilter->params[2] = 0.12;
+	theFilter->params[3] = 0.32;
+	theFilter->params[4] = 0.32;
+	theFilter->params[5] = 0.12;
+	theFilter->params[6] = 0.05;
+	theFilter->params[7] = 0.01;
 }
 
 int main() {
@@ -154,7 +218,24 @@ int main() {
 	InitEXTI();
 	EnableEXTIInterrupt();
 	
-	GPIO_ToggleBits(GPIOD, GPIO_Pin_13);
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_9; //I2S SCL and SDA pins
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource4, GPIO_AF_SPI3);
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+
+	GPIO_Init(GPIOD, &GPIO_InitStructure);
+
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
+
+	codec_init();
+	codec_ctrl_init();
+
+	I2S_Cmd(CODEC_I2S, ENABLE);
+
+	initFilter(&filt);
+	
+	GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
 	
 	Brew();
 
