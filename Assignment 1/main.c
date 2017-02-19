@@ -103,7 +103,7 @@ void InitEXTI()
     EXTI_InitStructure.EXTI_Line = EXTI_Line0;
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
     EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
     EXTI_Init(&EXTI_InitStructure);
 }
 
@@ -147,14 +147,14 @@ void TIM3_IRQHandler()
 						curr_led++;
 						delay(80000);
 					}
-				} else if(button_press > 1 && brewing == 0) {
+				} else if(button_press == 2 && brewing == 0) {
 					//Enable selection
 					Brew();
 				} else if(button_press == 1 && brewing == 1) {
 					//Reset brew timer, basically recall brew function
 					brewing = 0;
 					Brew();
-				} else if(button_press > 1 && brewing == 1) {
+				} else if(button_press == 2 && brewing == 1) {
 					brewing = 0;
 				}
     }
