@@ -384,6 +384,11 @@
               <FileType>1</FileType>
               <FilePath>.\main.c</FilePath>
             </File>
+            <File>
+              <FileName>codec.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\codec.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
