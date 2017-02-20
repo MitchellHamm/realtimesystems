@@ -123,17 +123,7 @@ void PendSV_Handler(void)
   * @param  None
   * @retval None
   */
-__IO uint32_t TimmingDelay;
-void SysTick_Handler(void)
-{
-  if(TimmingDelay !=0)
-  {
-    TimmingDelay --;
-  
-  }
-  
-  
-}
+
 
 /******************************************************************************/
 /*                 STM32Fxxx Peripherals Interrupt Handlers                   */
@@ -167,12 +157,6 @@ void TIM2_IRQHandler(void)
     
 }
 
-
-void TIM3_IRQHandler(void)
-{
-    
- 
-}
 
 void TIM4_IRQHandler(void)
 {

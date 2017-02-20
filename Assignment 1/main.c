@@ -4,6 +4,7 @@
 #include "stm32f4xx_tim.h"
 #include "stm32f4xx_rcc.h"
 #include "stm32f4xx_i2c.h"
+#include "stm32f4xx_it.h"
 #include <misc.h>
 
 GPIO_InitTypeDef GPIO_Initstructure;
@@ -16,11 +17,28 @@ fir_8 filt;
 int curr_led = 12;
 int button_press_count = 0;
 int brewing = 0;
+int timer_cycle = 0;
+int button_press = -1;
+int button_release = -1;
 
 void Brew(void);
+void Delay(__IO uint32_t time);
+extern __IO uint32_t TimmingDelay;
 
 void delay(__IO uint32_t nCount){
 	while(nCount--){}
+}
+
+__IO uint32_t TimmingDelay;
+void SysTick_Handler(void)
+{
+  if(TimmingDelay !=0)
+  {
+    TimmingDelay --;
+  
+  }
+  
+  
 }
 
 void InitLEDs()
@@ -59,7 +77,6 @@ void InitTimers2()
   timer_InitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
   timer_InitStructure.TIM_RepetitionCounter = 0;
   TIM_TimeBaseInit(TIM3, &timer_InitStructure);
-  TIM_Cmd(TIM3, ENABLE);
 	TIM_ITConfig(TIM3, TIM_IT_Update, ENABLE);
 }
 
@@ -103,7 +120,7 @@ void InitEXTI()
     EXTI_InitStructure.EXTI_Line = EXTI_Line0;
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
     EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
     EXTI_Init(&EXTI_InitStructure);
 }
 
@@ -118,44 +135,32 @@ void EnableEXTIInterrupt()
 
 void TIM3_IRQHandler()
 {
-		int button_press = button_press_count;
     if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET)
     {
-        TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
-				button_press_count = 0;
-        
-				if(button_press == 1 && brewing == 0){
-					//cycle leds
+				int count = button_press_count;
+				TIM_Cmd(TIM3, DISABLE);
+				TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+			  button_press_count = 0;
+				if(count == 1) {
 					if(curr_led == 15){
 						GPIO_ResetBits(GPIOD, GPIO_Pin_15);
-						GPIO_SetBits(GPIOD, GPIO_Pin_11);
+						GPIO_SetBits(GPIOD, GPIO_Pin_12);
 						curr_led = 12;
-						delay(80000);
 					} else if(curr_led == 14) {
 						GPIO_ResetBits(GPIOD, GPIO_Pin_14);
 						GPIO_SetBits(GPIOD, GPIO_Pin_15);
 						curr_led++;
-						delay(80000);
 					} else if(curr_led == 13) {
 						GPIO_ResetBits(GPIOD, GPIO_Pin_13);
 						GPIO_SetBits(GPIOD, GPIO_Pin_14);
 						curr_led++;
-						delay(80000);
 					} else if(curr_led == 12) {
 						GPIO_ResetBits(GPIOD, GPIO_Pin_12);
 						GPIO_SetBits(GPIOD, GPIO_Pin_13);
 						curr_led++;
-						delay(80000);
 					}
-				} else if(button_press == 2 && brewing == 0) {
-					//Enable selection
+				} else if(count == 2) {
 					Brew();
-				} else if(button_press == 1 && brewing == 1) {
-					//Reset brew timer, basically recall brew function
-					brewing = 0;
-					Brew();
-				} else if(button_press == 2 && brewing == 1) {
-					brewing = 0;
 				}
     }
 }
@@ -165,9 +170,11 @@ void EXTI0_IRQHandler()
     // Checks whether the interrupt from EXTI0 or not
     if (EXTI_GetITStatus(EXTI_Line0) != RESET)
     {
-			// Clears the EXTI line pending bit
-      EXTI_ClearITPendingBit(EXTI_Line0);	
-			button_press_count++;		
+			button_press_count++;
+			TIM_Cmd(TIM3, ENABLE);
+	
+			// Clears the EXTI line pending bit		
+			EXTI_ClearITPendingBit(EXTI_Line0);
     }
 }
 
@@ -309,6 +316,9 @@ int main() {
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD,ENABLE);
+	SysTick_Config(SystemCoreClock/1000);
 
 	GPIO_Init(GPIOD, &GPIO_InitStructure);
 
@@ -324,6 +334,12 @@ int main() {
 	GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
 	
 	while(1){
-		
+
 	}
+}
+
+void Delay(__IO uint32_t time)
+{
+  TimmingDelay = time;
+  while(TimmingDelay !=0);
 }
