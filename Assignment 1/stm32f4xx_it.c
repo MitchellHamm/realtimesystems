@@ -151,13 +151,6 @@ int cnt1, cnt2, cnt_neww ;
 extern int PWM_period, hh, decrem,cnt_nmbr,Nmbr_turns,Sampling,macro, limites,steps,test;
 
 
-
-void TIM2_IRQHandler(void)
-{
-    
-}
-
-
 void TIM4_IRQHandler(void)
 {
  

@@ -17,11 +17,10 @@ fir_8 filt;
 int curr_led = 12;
 int button_press_count = 0;
 int brewing = 0;
-int timer_cycle = 0;
+int iterations = 0;
 int button_press = -1;
 int button_release = -1;
 
-void Brew(void);
 void Delay(__IO uint32_t time);
 extern __IO uint32_t TimmingDelay;
 
@@ -63,7 +62,7 @@ void InitTimers()
   timer_InitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
   timer_InitStructure.TIM_RepetitionCounter = 0;
   TIM_TimeBaseInit(TIM2, &timer_InitStructure);
-  TIM_Cmd(TIM2, ENABLE);
+  TIM_Cmd(TIM2, DISABLE);
 	TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
 }
 
@@ -84,7 +83,7 @@ void EnableTimerInterrupt()
 {
     nvicStructure.NVIC_IRQChannel = TIM2_IRQn;
     nvicStructure.NVIC_IRQChannelPreemptionPriority = 0;
-    nvicStructure.NVIC_IRQChannelSubPriority = 1;
+    nvicStructure.NVIC_IRQChannelSubPriority = 3;
     nvicStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&nvicStructure);
 }
@@ -93,7 +92,7 @@ void EnableTimerInterrupt2()
 {
     nvicStructure.NVIC_IRQChannel = TIM3_IRQn;
     nvicStructure.NVIC_IRQChannelPreemptionPriority = 0;
-    nvicStructure.NVIC_IRQChannelSubPriority = 1;
+    nvicStructure.NVIC_IRQChannelSubPriority = 2;
     nvicStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&nvicStructure);
 }
@@ -133,15 +132,78 @@ void EnableEXTIInterrupt()
     NVIC_Init(&NVIC_InitStructure);
 }
 
+void TIM2_IRQHandler() {
+	if (TIM_GetITStatus(TIM2, TIM_IT_Update) != RESET)
+    {
+				int i = 0;
+				int brewTime = brewTimes[curr_led-12];
+				brewTime = brewTime * 2;
+        TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
+				
+				if(iterations <= brewTime && brewing == 1) {
+					if(curr_led == 12)
+				{
+					GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
+				}
+				else if(curr_led == 13)
+				{
+					GPIO_ToggleBits(GPIOD, GPIO_Pin_13);
+				}
+				else if(curr_led == 14)
+				{
+					GPIO_ToggleBits(GPIOD, GPIO_Pin_14);
+				}
+				else if(curr_led == 15)
+				{
+					GPIO_ToggleBits(GPIOD, GPIO_Pin_15);
+				}
+				iterations++;
+				} else if(iterations > brewTimes [curr_led-12]) {
+					TIM_Cmd(TIM2, DISABLE);
+					//Finished brewing play sound
+					//Just use a crude loop to play the sound for roughly 1 second
+					if(brewing == 1){
+						while(i < 4800000) {
+							if (SPI_I2S_GetFlagStatus(CODEC_I2S, SPI_I2S_FLAG_TXE)){
+								SPI_I2S_SendData(CODEC_I2S, sample);
+
+								if (sampleCounter & 0x00000001){
+									sawWave += NOTEFREQUENCY;
+									if (sawWave > 1.0)
+										sawWave -= 2.0;
+
+									filteredSaw = updateFilter(&filt, sawWave);
+									sample = (int16_t)(NOTEAMPLITUDE*filteredSaw);
+								}
+								sampleCounter++;
+							}
+						i++;
+						}
+					}
+	
+					//Reset bits so we're at the starting state again
+					GPIO_SetBits(GPIOD, GPIO_Pin_12);
+					GPIO_ResetBits(GPIOD, GPIO_Pin_13);
+					GPIO_ResetBits(GPIOD, GPIO_Pin_14);
+					GPIO_ResetBits(GPIOD, GPIO_Pin_15);
+	
+					curr_led = 12;
+	
+					brewing = 0;
+					iterations = 0;
+				}
+    }
+}
+
 void TIM3_IRQHandler()
 {
     if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET)
     {
 				int count = button_press_count;
+				button_press_count = 0;
 				TIM_Cmd(TIM3, DISABLE);
 				TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
-			  button_press_count = 0;
-				if(count == 1) {
+				if(count == 1 && brewing == 0) {
 					if(curr_led == 15){
 						GPIO_ResetBits(GPIOD, GPIO_Pin_15);
 						GPIO_SetBits(GPIOD, GPIO_Pin_12);
@@ -159,8 +221,25 @@ void TIM3_IRQHandler()
 						GPIO_SetBits(GPIOD, GPIO_Pin_13);
 						curr_led++;
 					}
-				} else if(count == 2) {
-					Brew();
+				} else if(count == 2 && brewing == 0) {
+					brewing = 1;
+					TIM_Cmd(TIM2, ENABLE);
+				} else if(count == 1 && brewing == 1) {
+					//Restart brewing by canceling and then re-brewing
+					iterations = 0;
+				} else if(count == 2 && brewing == 1) {
+					//Cancel brewing
+					TIM_Cmd(TIM2, DISABLE);
+					//Reset bits so we're at the starting state again
+					GPIO_SetBits(GPIOD, GPIO_Pin_12);
+					GPIO_ResetBits(GPIOD, GPIO_Pin_13);
+					GPIO_ResetBits(GPIOD, GPIO_Pin_14);
+					GPIO_ResetBits(GPIOD, GPIO_Pin_15);
+	
+					curr_led = 12;
+	
+					brewing = 0;
+					iterations = 0;
 				}
     }
 }
@@ -170,95 +249,14 @@ void EXTI0_IRQHandler()
     // Checks whether the interrupt from EXTI0 or not
     if (EXTI_GetITStatus(EXTI_Line0) != RESET)
     {
+			if(button_press_count == 0) {
+				TIM_Cmd(TIM3, ENABLE);
+			}
 			button_press_count++;
-			TIM_Cmd(TIM3, ENABLE);
 	
 			// Clears the EXTI line pending bit		
 			EXTI_ClearITPendingBit(EXTI_Line0);
     }
-}
-
-void Brew()
-{
-	//Must adjust brew time since the timer is 500ms
-	int selection = 0;
-	int brewTime = 0;
-	int iterations = 0;
-	int i = 0;
-	brewing = 1;
-	
-	if(curr_led == 12) {
-		selection = 0;
-	} else if(curr_led == 13) {
-		selection = 1;
-	} else if(curr_led == 14) {
-		selection = 2;
-	} else if(curr_led == 15) {
-		selection = 3;
-	}
-	
-	brewTime =  brewTimes[selection] * 2;
-	
-	while(iterations <= brewTime && brewing == 1)
-	{
-		if (TIM_GetITStatus(TIM2, TIM_IT_Update) != RESET)
-    {
-        TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
-			
-				if(selection == 0)
-				{
-					GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
-				}
-				else if(selection == 1)
-				{
-					GPIO_ToggleBits(GPIOD, GPIO_Pin_13);
-				}
-				else if(selection == 2)
-				{
-					GPIO_ToggleBits(GPIOD, GPIO_Pin_14);
-				}
-				else if(selection == 3)
-				{
-					GPIO_ToggleBits(GPIOD, GPIO_Pin_15);
-				}
-				iterations++;
-    }
-	}
-	
-	//Finished brewing play sound
-	//Just use a crude loop to play the sound for roughly 1 second
-	if(brewing == 1){
-	while(i < 4800000) {
-		if (SPI_I2S_GetFlagStatus(CODEC_I2S, SPI_I2S_FLAG_TXE))
-    	{
-    		SPI_I2S_SendData(CODEC_I2S, sample);
-
-    		//only update on every second sample to insure that L & R ch. have the same sample value
-    		if (sampleCounter & 0x00000001)
-    		{
-    			sawWave += NOTEFREQUENCY;
-    			if (sawWave > 1.0)
-    				sawWave -= 2.0;
-
-    			filteredSaw = updateFilter(&filt, sawWave);
-    			sample = (int16_t)(NOTEAMPLITUDE*filteredSaw);
-    		}
-    		sampleCounter++;
-    	}
-		i++;
-	}
-	}
-	
-	//Reset bits so we're at the starting state again
-	GPIO_SetBits(GPIOD, GPIO_Pin_12);
-	GPIO_ResetBits(GPIOD, GPIO_Pin_13);
-	GPIO_ResetBits(GPIOD, GPIO_Pin_14);
-	GPIO_ResetBits(GPIOD, GPIO_Pin_15);
-	
-	curr_led = 12;
-	
-	brewing = 0;
-	
 }
 
 float updateFilter(fir_8* filt, float val)
@@ -306,6 +304,7 @@ int main() {
 	InitLEDs();
 	InitTimers();
 	InitTimers2();
+	EnableTimerInterrupt();
 	EnableTimerInterrupt2();
 	InitButton();
 	InitEXTI();
