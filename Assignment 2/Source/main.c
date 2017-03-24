@@ -10,6 +10,7 @@
 #include "task.h"
 #include "croutine.h"
 #include "timers.h"
+#include "semphr.h"
 //******************************************************************************
 
 /*
@@ -30,26 +31,28 @@ int leds[] = {LED_GREEN, LED_ORANGE, LED_RED, LED_BLUE};
 int toggle_led = 0;
 int debounce_trigger = 0;
 TimerHandle_t xTimers[2];
+SemaphoreHandle_t xDebounceLock;
+SemaphoreHandle_t xLEDCycleLock;
 
 #define STACK_SIZE_MIN	128	/* usStackDepth	- the stack size DEFINED IN WORDS.*/
 
 void vButtonDebounce( TimerHandle_t xTimer )
  {
-		uint32_t ulCount;
-
-    ulCount = ( uint32_t ) pvTimerGetTimerID( xTimer );
-
-    ulCount++;
-	 
-	 STM_EVAL_LEDToggle(LED_GREEN);
+	 //Once the timer resets, give the semaphore back so that we can unblock the button
+	 xSemaphoreGive(xDebounceLock);
    xTimerStop( xTimer, 0 );
+	 
+	 //Run the button press routines by giving the semaphore and letting the button task execute
+	 xSemaphoreGive(xLEDCycleLock);
  }
 
 static void vButtonTask( void *pvParameters )
 {
 	for( ;; )
 	{
-		if(toggle_led == 1) {
+		//Poll the semaphore to see when it unlocks
+		if(xSemaphoreTake(xLEDCycleLock, (TickType_t) 0) == pdTRUE) {
+			//Once the button timer reset has given us the semaphore, change the current LED
 			STM_EVAL_LEDToggle(leds[currLed]);
 			if(currLed == 3) {
 				currLed = 0;
@@ -58,7 +61,6 @@ static void vButtonTask( void *pvParameters )
 			}
 			
 			STM_EVAL_LEDToggle(leds[currLed]);
-			toggle_led = 0;
 		}
 	}
 }
@@ -68,9 +70,11 @@ void EXTI0_IRQHandler( void )
 	 // Checks whether the interrupt from EXTI0 or not
     if (EXTI_GetITStatus(EXTI_Line0) != RESET)
     {      
-				//debounce_trigger = 1;
-				//toggle_led = 1;
-				xTimerStartFromISR(xTimers[0],0);
+				//Button press ocurred, check if we can access the semaphore
+				//If the semaphore is not available it means we need to ignore the button debounce
+				if(xSemaphoreTakeFromISR(xDebounceLock, NULL) == pdTRUE) {
+					xTimerStartFromISR(xTimers[0],0);
+				}
 			
 			// Clears the EXTI line pending bit
       EXTI_ClearITPendingBit(EXTI_Line0);			
@@ -105,6 +109,12 @@ int main(void)
 	
 	xTaskCreate( vButtonTask, "Button", configMINIMAL_STACK_SIZE, NULL, BUTTON_PRIORITY, NULL );	
 	xTimers[0] = xTimerCreate("Debounce Timer", DEBOUNCE_DELAY, pdTRUE, (void *) 0, vButtonDebounce);
+	xDebounceLock = xSemaphoreCreateBinary();
+	xLEDCycleLock = xSemaphoreCreateBinary();
+	
+	//Initally take the led semaphore so that when the task starts it's stuck
+	xSemaphoreTake(xLEDCycleLock, (TickType_t) 0);
+	xSemaphoreGive(xDebounceLock);
 	
 	vTaskStartScheduler();
 	

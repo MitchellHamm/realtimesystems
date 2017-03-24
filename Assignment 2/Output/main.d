@@ -49,3 +49,4 @@
 .\output\main.o: .\FreeRTOS\include\croutine.h
 .\output\main.o: .\FreeRTOS\include\list.h
 .\output\main.o: .\FreeRTOS\include\timers.h
+.\output\main.o: .\FreeRTOS\include\semphr.h
