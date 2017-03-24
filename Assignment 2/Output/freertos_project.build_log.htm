@@ -28,17 +28,29 @@ Project File Date:  03/21/2017
 *** Using Compiler 'V5.06 update 4 (build 422)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'freertos_project'
 compiling main.c...
-Source\main.c(74): warning:  #188-D: enumerated type mixed with another type
+Source\main.c(84): warning:  #188-D: enumerated type mixed with another type
   			STM_EVAL_LEDToggle(leds[currLed]);
-Source\main.c(81): warning:  #188-D: enumerated type mixed with another type
+Source\main.c(91): warning:  #188-D: enumerated type mixed with another type
   			STM_EVAL_LEDToggle(leds[currLed]);
-Source\main.c(150): warning:  #111-D: statement is unreachable
+Source\main.c(104): warning:  #188-D: enumerated type mixed with another type
+  			STM_EVAL_LEDToggle(leds[
+REEN_POSITION]);
+Source\main.c(129): warning:  #188-D: enumerated type mixed with another type
+  			STM_EVAL_LEDToggle(leds[
+RANGE_POSITION]);
+Source\main.c(154): warning:  #188-D: enumerated type mixed with another type
+  			STM_EVAL_LEDToggle(leds[
+ED_POSITION]);
+Source\main.c(179): warning:  #188-D: enumerated type mixed with another type
+  			STM_EVAL_LEDToggle(leds[
+LUE_POSITION]);
+Source\main.c(272): warning:  #111-D: statement is unreachable
     return 0;
-Source\main.c: 3 warnings, 0 errors
+Source\main.c: 7 warnings, 0 errors
 linking...
-Program Size: Code=18548 RO-data=488 RW-data=228 ZI-data=78740  
+Program Size: Code=19100 RO-data=488 RW-data=244 ZI-data=78772  
 FromELF: creating hex file...
-".\Output\freertos_project.axf" - 0 Error(s), 3 Warning(s).
+".\Output\freertos_project.axf" - 0 Error(s), 7 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -56,7 +68,7 @@ Package Vendor: ARM
 <h2>Collection of Component Files used:</h2>
 
    * Component: ARM::CMSIS:CORE:5.0.0
-Build Time Elapsed:  00:00:00
+Build Time Elapsed:  00:00:01
 </pre>
 </body>
 </html>

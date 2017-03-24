@@ -16,23 +16,31 @@
 /*
 *
 */
-#define BUTTON_PRIORITY		1 
+#define BUTTON_PRIORITY		1
+#define BREW_PRIORITY 1
 #define DEBOUNCE_DELAY	( 100 / portTICK_RATE_MS )
 #define DOUBLE_CLICK_TIME ( 250 / portTICK_RATE_MS)
+#define GREEN_POSITION 0
+#define ORANGE_POSITION 1
+#define RED_POSITION 2
+#define BLUE_POSITION 3
+
 
 void vLedBlinkBlue(void *pvParameters);
 void vLedBlinkRed(void *pvParameters);
 void vLedBlinkGreen(void *pvParameters);
 void vLedBlinkOrange(void *pvParameters);
-//void Delay(uint32_t val);
 
 
 int currLed = 0;
 int leds[] = {LED_GREEN, LED_ORANGE, LED_RED, LED_BLUE};
+int brew_times[] = {10, 11, 12, 13};
+int currently_brewing[] = {0, 0, 0, 0};
 int click_count = 0;
 TimerHandle_t xTimers[2];
 SemaphoreHandle_t xDebounceLock;
 SemaphoreHandle_t xLEDCycleLock;
+SemaphoreHandle_t xLEDBrewLock[4];
 
 #define STACK_SIZE_MIN	128	/* usStackDepth	- the stack size DEFINED IN WORDS.*/
 
@@ -51,6 +59,7 @@ void vButtonDebounce( TimerHandle_t xTimer )
  {
 		if(click_count == 2) {
 			//Trigger double click
+			xSemaphoreGive(xLEDBrewLock[currLed]);
 		} else if(click_count == 1) {
 			//Trigger single click
 			//Run the button press routines by giving the semaphore and letting the button task execute
@@ -79,6 +88,106 @@ static void vButtonTask( void *pvParameters )
 			}
 			
 			STM_EVAL_LEDToggle(leds[currLed]);
+		}
+	}
+}
+
+static void vBrewGreenTask(void *pvParameters){
+	int current_cycle = 0;
+	for( ;; )
+	{
+		//Poll the green led semaphore
+		if(xSemaphoreTake(xLEDBrewLock[GREEN_POSITION], (TickType_t) 0) == pdTRUE) {
+			currently_brewing[GREEN_POSITION] = 1;
+			//Toggle led every 500ms
+			STM_EVAL_LEDToggle(leds[GREEN_POSITION]);
+			vTaskDelay(500 / portTICK_RATE_MS);
+			
+			current_cycle++;
+			
+			//If there are still cycles left to complete give the semaphore back
+			if(current_cycle != (brew_times[GREEN_POSITION]*2)) {
+				xSemaphoreGive(xLEDBrewLock[GREEN_POSITION]);
+			} else {
+				//Keep the semaphore locked and reset the cycle count if we need to brew again
+				current_cycle = 0;
+				currently_brewing[GREEN_POSITION] = 0;
+			}
+		}
+	}
+}
+
+static void vBrewOrangeTask(void *pvParameters){
+	int current_cycle = 0;
+	for( ;; )
+	{
+		//Poll the orange led semaphore
+		if(xSemaphoreTake(xLEDBrewLock[ORANGE_POSITION], (TickType_t) 0) == pdTRUE) {
+			currently_brewing[ORANGE_POSITION] = 1;
+			//Toggle led every 500ms
+			STM_EVAL_LEDToggle(leds[ORANGE_POSITION]);
+			vTaskDelay(500 / portTICK_RATE_MS);
+			
+			current_cycle++;
+			
+			//If there are still cycles left to complete give the semaphore back
+			if(current_cycle != (brew_times[ORANGE_POSITION]*2)) {
+				xSemaphoreGive(xLEDBrewLock[ORANGE_POSITION]);
+			} else {
+				//Keep the semaphore locked and reset the cycle count if we need to brew again
+				current_cycle = 0;
+				currently_brewing[ORANGE_POSITION] = 0;
+			}
+		}
+	}
+}
+
+static void vBrewRedTask(void *pvParameters){
+	int current_cycle = 0;
+	for( ;; )
+	{
+		//Poll the red led semaphore
+		if(xSemaphoreTake(xLEDBrewLock[RED_POSITION], (TickType_t) 0) == pdTRUE) {
+			currently_brewing[RED_POSITION] = 1;
+			//Toggle led every 500ms
+			STM_EVAL_LEDToggle(leds[RED_POSITION]);
+			vTaskDelay(500 / portTICK_RATE_MS);
+			
+			current_cycle++;
+			
+			//If there are still cycles left to complete give the semaphore back
+			if(current_cycle != (brew_times[RED_POSITION]*2)) {
+				xSemaphoreGive(xLEDBrewLock[RED_POSITION]);
+			} else {
+				//Keep the semaphore locked and reset the cycle count if we need to brew again
+				current_cycle = 0;
+				currently_brewing[RED_POSITION] = 0;
+			}
+		}
+	}
+}
+
+static void vBrewBlueTask(void *pvParameters){
+	int current_cycle = 0;
+	for( ;; )
+	{
+		//Poll the blue led semaphore
+		if(xSemaphoreTake(xLEDBrewLock[BLUE_POSITION], (TickType_t) 0) == pdTRUE) {
+			currently_brewing[BLUE_POSITION] = 1;
+			//Toggle led every 500ms
+			STM_EVAL_LEDToggle(leds[BLUE_POSITION]);
+			vTaskDelay(500 / portTICK_RATE_MS);
+			
+			current_cycle++;
+			
+			//If there are still cycles left to complete give the semaphore back
+			if(current_cycle != (brew_times[BLUE_POSITION]*2)) {
+				xSemaphoreGive(xLEDBrewLock[BLUE_POSITION]);
+			} else {
+				//Keep the semaphore locked and reset the cycle count if we need to brew again
+				current_cycle = 0;
+				currently_brewing[BLUE_POSITION] = 0;
+			}
 		}
 	}
 }
@@ -130,6 +239,12 @@ int main(void)
 	
 	//Create the task to cycle the leds
 	xTaskCreate( vButtonTask, "Button", configMINIMAL_STACK_SIZE, NULL, BUTTON_PRIORITY, NULL );	
+	//Create the brew tasks for each led
+	xTaskCreate( vBrewGreenTask, "Brew Green", configMINIMAL_STACK_SIZE, NULL, BREW_PRIORITY, NULL);
+	xTaskCreate( vBrewOrangeTask, "Brew Orange", configMINIMAL_STACK_SIZE, NULL, BREW_PRIORITY, NULL);
+	xTaskCreate( vBrewRedTask, "Brew Red", configMINIMAL_STACK_SIZE, NULL, BREW_PRIORITY, NULL);
+	xTaskCreate( vBrewBlueTask, "Brew Blue", configMINIMAL_STACK_SIZE, NULL, BREW_PRIORITY, NULL);
+	
 	//Create the timer to ignore the button debounce
 	xTimers[0] = xTimerCreate("Debounce Timer", DEBOUNCE_DELAY, pdTRUE, (void *) 0, vButtonDebounce);
 	//Create the timer to measure double clicks
@@ -138,6 +253,12 @@ int main(void)
 	xDebounceLock = xSemaphoreCreateBinary();
 	//Create semaphore to block the led cycling
 	xLEDCycleLock = xSemaphoreCreateBinary();
+	
+	//Create the brew led semaphores
+	xLEDBrewLock[0] = xSemaphoreCreateBinary();
+	xLEDBrewLock[1] = xSemaphoreCreateBinary();
+	xLEDBrewLock[2] = xSemaphoreCreateBinary();
+	xLEDBrewLock[3] = xSemaphoreCreateBinary();
 	
 	//Initally take the led semaphore so that when the task starts it's stuck
 	xSemaphoreTake(xLEDCycleLock, (TickType_t) 0);
