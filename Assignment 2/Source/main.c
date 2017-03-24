@@ -18,7 +18,9 @@
 */
 #define BUTTON_PRIORITY		1
 #define BREW_PRIORITY 1
+//This constant defines how long the board will ignore subsequent button presses for
 #define DEBOUNCE_DELAY	( 150 / portTICK_RATE_MS )
+//This constant defines how long the board will wait until processing button presses
 #define DOUBLE_CLICK_TIME ( 250 / portTICK_RATE_MS)
 #define GREEN_POSITION 0
 #define ORANGE_POSITION 1
