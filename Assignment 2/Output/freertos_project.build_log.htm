@@ -28,29 +28,41 @@ Project File Date:  03/21/2017
 *** Using Compiler 'V5.06 update 4 (build 422)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'freertos_project'
 compiling main.c...
-Source\main.c(84): warning:  #188-D: enumerated type mixed with another type
-  			STM_EVAL_LEDToggle(leds[currLed]);
-Source\main.c(91): warning:  #188-D: enumerated type mixed with another type
-  			STM_EVAL_LEDToggle(leds[currLed]);
-Source\main.c(104): warning:  #188-D: enumerated type mixed with another type
+Source\main.c(88): warning:  #188-D: enumerated type mixed with another type
+  			STM_EVAL_LEDOff(leds[currLed]);
+Source\main.c(109): warning:  #188-D: enumerated type mixed with another type
+  				STM_EVAL_LEDOn(leds[currLed]);
+Source\main.c(121): warning:  #188-D: enumerated type mixed with another type
   			STM_EVAL_LEDToggle(leds[
 REEN_POSITION]);
-Source\main.c(129): warning:  #188-D: enumerated type mixed with another type
+Source\main.c(136): warning:  #188-D: enumerated type mixed with another type
+  					STM_EVAL_LEDOff(leds[
+REEN_POSITION]);
+Source\main.c(150): warning:  #188-D: enumerated type mixed with another type
   			STM_EVAL_LEDToggle(leds[
 RANGE_POSITION]);
-Source\main.c(154): warning:  #188-D: enumerated type mixed with another type
-  			STM_EVAL_LEDToggle(leds[
-ED_POSITION]);
+Source\main.c(165): warning:  #188-D: enumerated type mixed with another type
+  					STM_EVAL_LEDOff(leds[
+RANGE_POSITION]);
 Source\main.c(179): warning:  #188-D: enumerated type mixed with another type
   			STM_EVAL_LEDToggle(leds[
+ED_POSITION]);
+Source\main.c(194): warning:  #188-D: enumerated type mixed with another type
+  					STM_EVAL_LEDOff(leds[
+ED_POSITION]);
+Source\main.c(208): warning:  #188-D: enumerated type mixed with another type
+  			STM_EVAL_LEDToggle(leds[
 LUE_POSITION]);
-Source\main.c(272): warning:  #111-D: statement is unreachable
+Source\main.c(223): warning:  #188-D: enumerated type mixed with another type
+  					STM_EVAL_LEDOff(leds[
+LUE_POSITION]);
+Source\main.c(306): warning:  #111-D: statement is unreachable
     return 0;
-Source\main.c: 7 warnings, 0 errors
+Source\main.c: 11 warnings, 0 errors
 linking...
-Program Size: Code=19100 RO-data=488 RW-data=244 ZI-data=78772  
+Program Size: Code=19280 RO-data=488 RW-data=248 ZI-data=78768  
 FromELF: creating hex file...
-".\Output\freertos_project.axf" - 0 Error(s), 7 Warning(s).
+".\Output\freertos_project.axf" - 0 Error(s), 11 Warning(s).
 
 <h2>Software Packages used:</h2>
 

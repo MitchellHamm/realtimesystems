@@ -18,7 +18,7 @@
 */
 #define BUTTON_PRIORITY		1
 #define BREW_PRIORITY 1
-#define DEBOUNCE_DELAY	( 100 / portTICK_RATE_MS )
+#define DEBOUNCE_DELAY	( 150 / portTICK_RATE_MS )
 #define DOUBLE_CLICK_TIME ( 250 / portTICK_RATE_MS)
 #define GREEN_POSITION 0
 #define ORANGE_POSITION 1
@@ -34,8 +34,9 @@ void vLedBlinkOrange(void *pvParameters);
 
 int currLed = 0;
 int leds[] = {LED_GREEN, LED_ORANGE, LED_RED, LED_BLUE};
-int brew_times[] = {10, 11, 12, 13};
+int brew_times[] = {20, 21, 22, 23};
 int currently_brewing[] = {0, 0, 0, 0};
+int brew_count = 0;
 int click_count = 0;
 TimerHandle_t xTimers[2];
 SemaphoreHandle_t xDebounceLock;
@@ -59,6 +60,9 @@ void vButtonDebounce( TimerHandle_t xTimer )
  {
 		if(click_count == 2) {
 			//Trigger double click
+			//Run brew routines by unlocking the current led semaphore
+			currently_brewing[currLed] = 1;
+			brew_count++;
 			xSemaphoreGive(xLEDBrewLock[currLed]);
 		} else if(click_count == 1) {
 			//Trigger single click
@@ -79,15 +83,30 @@ static void vButtonTask( void *pvParameters )
 	{
 		//Poll the semaphore to see when it unlocks
 		if(xSemaphoreTake(xLEDCycleLock, (TickType_t) 0) == pdTRUE) {
+			int done = 0;
 			//Once the button timer reset has given us the semaphore, change the current LED
-			STM_EVAL_LEDToggle(leds[currLed]);
+			STM_EVAL_LEDOff(leds[currLed]);
 			if(currLed == 3) {
 				currLed = 0;
 			} else {
 				currLed++;
 			}
 			
-			STM_EVAL_LEDToggle(leds[currLed]);
+				//Not all coffee brewing so we can change the current led
+				while(done < 3) {
+					//Check if we're about to switch to an led that's currently brewing
+					if(currently_brewing[currLed] == 1) {
+						currLed++;
+						done++;
+					} else {
+						done = 4;
+					}
+					if(currLed >= 4) {
+						currLed = 0;
+					}
+				}
+				
+				STM_EVAL_LEDOn(leds[currLed]);
 		}
 	}
 }
@@ -98,7 +117,6 @@ static void vBrewGreenTask(void *pvParameters){
 	{
 		//Poll the green led semaphore
 		if(xSemaphoreTake(xLEDBrewLock[GREEN_POSITION], (TickType_t) 0) == pdTRUE) {
-			currently_brewing[GREEN_POSITION] = 1;
 			//Toggle led every 500ms
 			STM_EVAL_LEDToggle(leds[GREEN_POSITION]);
 			vTaskDelay(500 / portTICK_RATE_MS);
@@ -112,6 +130,11 @@ static void vBrewGreenTask(void *pvParameters){
 				//Keep the semaphore locked and reset the cycle count if we need to brew again
 				current_cycle = 0;
 				currently_brewing[GREEN_POSITION] = 0;
+				brew_count--;
+				//Turn off the LED if it isn't the current led
+				if(currLed != GREEN_POSITION) {
+					STM_EVAL_LEDOff(leds[GREEN_POSITION]);
+				}
 			}
 		}
 	}
@@ -123,7 +146,6 @@ static void vBrewOrangeTask(void *pvParameters){
 	{
 		//Poll the orange led semaphore
 		if(xSemaphoreTake(xLEDBrewLock[ORANGE_POSITION], (TickType_t) 0) == pdTRUE) {
-			currently_brewing[ORANGE_POSITION] = 1;
 			//Toggle led every 500ms
 			STM_EVAL_LEDToggle(leds[ORANGE_POSITION]);
 			vTaskDelay(500 / portTICK_RATE_MS);
@@ -137,6 +159,11 @@ static void vBrewOrangeTask(void *pvParameters){
 				//Keep the semaphore locked and reset the cycle count if we need to brew again
 				current_cycle = 0;
 				currently_brewing[ORANGE_POSITION] = 0;
+				brew_count--;
+				//Turn off the LED if it isn't the current led
+				if(currLed != ORANGE_POSITION) {
+					STM_EVAL_LEDOff(leds[ORANGE_POSITION]);
+				}
 			}
 		}
 	}
@@ -148,7 +175,6 @@ static void vBrewRedTask(void *pvParameters){
 	{
 		//Poll the red led semaphore
 		if(xSemaphoreTake(xLEDBrewLock[RED_POSITION], (TickType_t) 0) == pdTRUE) {
-			currently_brewing[RED_POSITION] = 1;
 			//Toggle led every 500ms
 			STM_EVAL_LEDToggle(leds[RED_POSITION]);
 			vTaskDelay(500 / portTICK_RATE_MS);
@@ -162,6 +188,11 @@ static void vBrewRedTask(void *pvParameters){
 				//Keep the semaphore locked and reset the cycle count if we need to brew again
 				current_cycle = 0;
 				currently_brewing[RED_POSITION] = 0;
+				brew_count--;
+				//Turn off the LED if it isn't the current led
+				if(currLed != RED_POSITION) {
+					STM_EVAL_LEDOff(leds[RED_POSITION]);
+				}
 			}
 		}
 	}
@@ -173,7 +204,6 @@ static void vBrewBlueTask(void *pvParameters){
 	{
 		//Poll the blue led semaphore
 		if(xSemaphoreTake(xLEDBrewLock[BLUE_POSITION], (TickType_t) 0) == pdTRUE) {
-			currently_brewing[BLUE_POSITION] = 1;
 			//Toggle led every 500ms
 			STM_EVAL_LEDToggle(leds[BLUE_POSITION]);
 			vTaskDelay(500 / portTICK_RATE_MS);
@@ -187,6 +217,11 @@ static void vBrewBlueTask(void *pvParameters){
 				//Keep the semaphore locked and reset the cycle count if we need to brew again
 				current_cycle = 0;
 				currently_brewing[BLUE_POSITION] = 0;
+				brew_count--;
+				//Turn off the LED if it isn't the current led
+				if(currLed != BLUE_POSITION) {
+					STM_EVAL_LEDOff(leds[BLUE_POSITION]);
+				}
 			}
 		}
 	}
