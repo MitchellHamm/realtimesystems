@@ -50,3 +50,4 @@
 .\output\main.o: .\FreeRTOS\include\list.h
 .\output\main.o: .\FreeRTOS\include\timers.h
 .\output\main.o: .\FreeRTOS\include\semphr.h
+.\output\main.o: Source\codec.h

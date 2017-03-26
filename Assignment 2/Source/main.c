@@ -11,6 +11,7 @@
 #include "croutine.h"
 #include "timers.h"
 #include "semphr.h"
+#include "codec.h"
 //******************************************************************************
 
 /*
@@ -26,6 +27,8 @@
 #define ORANGE_POSITION 1
 #define RED_POSITION 2
 #define BLUE_POSITION 3
+#define NOTEFREQUENCY 0.015
+#define NOTEAMPLITUDE 500.0
 
 
 void vLedBlinkBlue(void *pvParameters);
@@ -33,13 +36,31 @@ void vLedBlinkRed(void *pvParameters);
 void vLedBlinkGreen(void *pvParameters);
 void vLedBlinkOrange(void *pvParameters);
 
+typedef struct {
+	float tabs[8];
+	float params[8];
+	uint8_t currIndex;
+} fir_8;
+
 
 int currLed = 0;
+int codecInit = 0;
 int leds[] = {LED_GREEN, LED_ORANGE, LED_RED, LED_BLUE};
-int brew_times[] = {20, 21, 22, 23};
+int brew_times[] = {5, 6, 7, 8};
 int currently_brewing[] = {0, 0, 0, 0};
 int brew_count = 0;
 int click_count = 0;
+volatile uint32_t sampleCounter = 0;
+volatile int16_t sample = 0;
+fir_8 filt;
+
+double sawWave = 0.0;
+
+float filteredSaw = 0.0;
+
+float updateFilter(fir_8* theFilter, float newValue);
+
+void initFilter(fir_8* theFilter);
 TimerHandle_t xTimers[2];
 SemaphoreHandle_t xDebounceLock;
 SemaphoreHandle_t xLEDCycleLock;
@@ -113,10 +134,39 @@ static void vButtonTask( void *pvParameters )
 	}
 }
 
+void playSound() {
+	int i = 0;
+	if(codecInit == 0) {
+		codec_init();
+		codec_ctrl_init();
+		I2S_Cmd(CODEC_I2S, ENABLE);
+		initFilter(&filt);
+		codecInit = 1;
+	}
+	
+	while(i < 1200000) {
+		if (SPI_I2S_GetFlagStatus(CODEC_I2S, SPI_I2S_FLAG_TXE)){
+			SPI_I2S_SendData(CODEC_I2S, sample);
+
+			if (sampleCounter & 0x00000001){
+				sawWave += NOTEFREQUENCY;
+				if (sawWave > 1.0)
+					sawWave -= 2.0;
+
+				filteredSaw = updateFilter(&filt, sawWave);
+				sample = (int16_t)(NOTEAMPLITUDE*filteredSaw);
+			}
+			sampleCounter++;
+		}
+		i++;
+	}
+}
+
 static void vBrewGreenTask(void *pvParameters){
 	int current_cycle = 0;
 	for( ;; )
 	{
+		int i = 0;
 		//Poll the green led semaphore
 		if(xSemaphoreTake(xLEDBrewLock[GREEN_POSITION], (TickType_t) 0) == pdTRUE) {
 			//Toggle led every 500ms
@@ -137,6 +187,7 @@ static void vBrewGreenTask(void *pvParameters){
 				if(currLed != GREEN_POSITION) {
 					STM_EVAL_LEDOff(leds[GREEN_POSITION]);
 				}
+				playSound();
 			}
 		}
 	}
@@ -166,6 +217,7 @@ static void vBrewOrangeTask(void *pvParameters){
 				if(currLed != ORANGE_POSITION) {
 					STM_EVAL_LEDOff(leds[ORANGE_POSITION]);
 				}
+				playSound();
 			}
 		}
 	}
@@ -195,6 +247,7 @@ static void vBrewRedTask(void *pvParameters){
 				if(currLed != RED_POSITION) {
 					STM_EVAL_LEDOff(leds[RED_POSITION]);
 				}
+				playSound();
 			}
 		}
 	}
@@ -224,6 +277,7 @@ static void vBrewBlueTask(void *pvParameters){
 				if(currLed != BLUE_POSITION) {
 					STM_EVAL_LEDOff(leds[BLUE_POSITION]);
 				}
+				playSound();
 			}
 		}
 	}
@@ -248,6 +302,36 @@ void EXTI0_IRQHandler( void )
     }
 }
 
+void initPlayback(){
+	GPIO_InitTypeDef I2C_InitStructure;
+	I2S_InitTypeDef I2S_InitType;
+	I2C_InitTypeDef I2C_InitType;
+	
+	I2C_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_9;
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource4, GPIO_AF_SPI3);
+	I2C_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	I2C_InitStructure.GPIO_OType = GPIO_OType_PP;
+	I2C_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	
+	I2S_InitType.I2S_AudioFreq = I2S_AudioFreq_48k;
+	I2S_InitType.I2S_MCLKOutput = I2S_MCLKOutput_Enable;
+	I2S_InitType.I2S_Mode = I2S_Mode_MasterTx;
+	I2S_InitType.I2S_DataFormat = I2S_DataFormat_16b;
+	I2S_InitType.I2S_Standard = I2S_Standard_Phillips;
+	I2S_InitType.I2S_CPOL = I2S_CPOL_Low;
+	I2S_Init(SPI3, &I2S_InitType); 
+	I2S_Cmd(SPI3, ENABLE);
+	
+	I2C_InitType.I2C_ClockSpeed = 100000;
+	I2C_InitType.I2C_Mode = I2C_Mode_I2C;
+	I2C_InitType.I2C_OwnAddress1 = 99;
+	I2C_InitType.I2C_Ack = I2C_Ack_Enable;
+	I2C_InitType.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
+	I2C_InitType.I2C_DutyCycle = I2C_DutyCycle_2;
+	I2C_Init(I2C1, &I2C_InitType);   //initialize the I2C peripheral 
+	I2C_Cmd(I2C1, ENABLE);          //turn it on
+}
+
 //******************************************************************************
 int main(void)
 {
@@ -264,6 +348,21 @@ int main(void)
 		to be preempt priority bits by calling 
 		NVIC_PriorityGroupConfig( NVIC_PriorityGroup_4 ); before the RTOS is started.
 	*/
+	GPIO_InitTypeDef GPIO_InitStructure;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_9; //I2S SCL and SDA pins
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource4, GPIO_AF_SPI3);
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD,ENABLE);
+	SysTick_Config(SystemCoreClock/1000);
+
+	GPIO_Init(GPIOD, &GPIO_InitStructure);
+
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
+	codec_init();
+	
 	NVIC_PriorityGroupConfig( NVIC_PriorityGroup_4 );
 	
 	STM_EVAL_LEDInit(LED_BLUE);
@@ -308,39 +407,44 @@ int main(void)
   return 0;
 }
 
-void vLedBlinkBlue(void *pvParameters)
+float updateFilter(fir_8* filt, float val)
 {
-	for(;;)
+	uint16_t valIndex;
+	uint16_t paramIndex;
+	float outval = 0.0;
+
+	valIndex = filt->currIndex;
+	filt->tabs[valIndex] = val;
+
+	for (paramIndex=0; paramIndex<8; paramIndex++)
 	{
-		STM_EVAL_LEDToggle(LED_BLUE);
-		vTaskDelay( 1000 / portTICK_RATE_MS );
+		outval += (filt->params[paramIndex]) * (filt->tabs[(valIndex+paramIndex)&0x07]);
 	}
+
+	valIndex++;
+	valIndex &= 0x07;
+
+	filt->currIndex = valIndex;
+
+	return outval;
 }
 
-void vLedBlinkRed(void *pvParameters)
+void initFilter(fir_8* theFilter)
 {
-	for(;;)
-	{
-		STM_EVAL_LEDToggle(LED_RED);
-		vTaskDelay( 500 / portTICK_RATE_MS );
-	}
-}
+	uint8_t i;
 
-void vLedBlinkGreen(void *pvParameters)
-{
-	for(;;)
-	{
-		STM_EVAL_LEDToggle(LED_GREEN);
-		vTaskDelay( 200 / portTICK_RATE_MS );
-	}
-}
+	theFilter->currIndex = 0;
 
-void vLedBlinkOrange(void *pvParameters)
-{
-	for(;;)
-	{
-		STM_EVAL_LEDToggle(LED_ORANGE);
-		vTaskDelay( 300 / portTICK_RATE_MS );
-	}
+	for (i=0; i<8; i++)
+		theFilter->tabs[i] = 0.0;
+
+	theFilter->params[0] = 0.01;
+	theFilter->params[1] = 0.05;
+	theFilter->params[2] = 0.12;
+	theFilter->params[3] = 0.32;
+	theFilter->params[4] = 0.32;
+	theFilter->params[5] = 0.12;
+	theFilter->params[6] = 0.05;
+	theFilter->params[7] = 0.01;
 }
 //******************************************************************************
