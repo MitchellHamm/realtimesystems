@@ -61,7 +61,6 @@ float filteredSaw = 0.0;
 float updateFilter(fir_8* theFilter, float newValue);
 
 void initFilter(fir_8* theFilter);
-TimerHandle_t xTimers[2];
 SemaphoreHandle_t xDebounceLock;
 SemaphoreHandle_t xLEDCycleLock;
 SemaphoreHandle_t xDoubleClickLock;
@@ -89,21 +88,6 @@ void TM_DelayMillis(uint32_t millis) {
     /* 4 cycles for one loop */
     while (millis--);
 }
-
-void vButtonDebounce( TimerHandle_t xTimer )
- {
-	 
-	 
-   xTimerStop( xTimer, 0 );
- }
- 
- void vDoubleClickTimer( TimerHandle_t xTimer)
- {
-		
-	 
-		//Stop the timer
-	  xTimerStop( xTimer, 0 );
- }
  
 static void vDoubleClickTask(void *pvParameters)
 {
@@ -423,10 +407,6 @@ int main(void)
 	xTaskCreate( vBrewBlueTask, "Brew Blue", configMINIMAL_STACK_SIZE, NULL, BREW_PRIORITY, NULL);
 	xTaskCreate( vDoubleClickTask, "Double Click", configMINIMAL_STACK_SIZE, NULL, BUTTON_PRIORITY, NULL);
 	
-	//Create the timer to ignore the button debounce
-	xTimers[0] = xTimerCreate("Debounce Timer", DEBOUNCE_DELAY, pdTRUE, (void *) 0, vButtonDebounce);
-	//Create the timer to measure double clicks
-	xTimers[1] = xTimerCreate("Double Click Timer", DOUBLE_CLICK_TIME, pdTRUE, (void *) 0, vDoubleClickTimer);
 	//Create semaphore to block debouncing
 	xDebounceLock = xSemaphoreCreateBinary();
 	//Create semaphore to block the led cycling
@@ -443,8 +423,6 @@ int main(void)
 	//xSemaphoreTake(xLEDCycleLock, (TickType_t) 0);
 	//Initially have the debounce semaphore open so the first button press can take the lock in the ISR
 	xSemaphoreGive(xDebounceLock);
-	
-	xTimerStart(xTimers[0], 0);
 	
 	vTaskStartScheduler();
 	
