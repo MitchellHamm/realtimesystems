@@ -32,4 +32,5 @@ time slicing on or off. This is to be expected as the default scheduler already
 switches tasks periodically.
 
 3.) Using a slightly lower processor clock speed only impacts the actual brew
-times. 
+times. Since the lower processor clock means less instructions can pass through,
+the brew times become slightly slower.
