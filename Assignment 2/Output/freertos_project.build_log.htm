@@ -28,58 +28,58 @@ Project File Date:  03/21/2017
 *** Using Compiler 'V5.06 update 4 (build 422)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'freertos_project'
 compiling event_groups.c...
+compiling timers.c...
 compiling list.c...
 compiling main.c...
 Source\codec.h(79): warning:  #1295-D: Deprecated declaration codec_init - give arg types
   void codec_init();
 Source\codec.h(80): warning:  #1295-D: Deprecated declaration codec_ctrl_init - give arg types
   void codec_ctrl_init();
-Source\main.c(119): warning:  #188-D: enumerated type mixed with another type
-  			STM_EVAL_LEDOff(leds[currLed]);
 Source\main.c(140): warning:  #188-D: enumerated type mixed with another type
+  			STM_EVAL_LEDOff(leds[currLed]);
+Source\main.c(161): warning:  #188-D: enumerated type mixed with another type
   				STM_EVAL_LEDOn(leds[currLed]);
-Source\main.c(165): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+Source\main.c(186): warning:  #1035-D: single-precision operand implicitly converted to double-precision
   				sample = (int16_t)(
 OTEAMPLITUDE*filteredSaw);
-Source\main.c(181): warning:  #188-D: enumerated type mixed with another type
+Source\main.c(202): warning:  #188-D: enumerated type mixed with another type
   			STM_EVAL_LEDToggle(leds[
 REEN_POSITION]);
-Source\main.c(196): warning:  #188-D: enumerated type mixed with another type
+Source\main.c(217): warning:  #188-D: enumerated type mixed with another type
   					STM_EVAL_LEDOff(leds[
 REEN_POSITION]);
-Source\main.c(177): warning:  #177-D: variable "i"  was declared but never referenced
+Source\main.c(198): warning:  #177-D: variable "i"  was declared but never referenced
   		int i = 0;
-Source\main.c(211): warning:  #188-D: enumerated type mixed with another type
+Source\main.c(232): warning:  #188-D: enumerated type mixed with another type
   			STM_EVAL_LEDToggle(leds[
 RANGE_POSITION]);
-Source\main.c(226): warning:  #188-D: enumerated type mixed with another type
+Source\main.c(247): warning:  #188-D: enumerated type mixed with another type
   					STM_EVAL_LEDOff(leds[
 RANGE_POSITION]);
-Source\main.c(241): warning:  #188-D: enumerated type mixed with another type
+Source\main.c(262): warning:  #188-D: enumerated type mixed with another type
   			STM_EVAL_LEDToggle(leds[
 ED_POSITION]);
-Source\main.c(256): warning:  #188-D: enumerated type mixed with another type
+Source\main.c(277): warning:  #188-D: enumerated type mixed with another type
   					STM_EVAL_LEDOff(leds[
 ED_POSITION]);
-Source\main.c(271): warning:  #188-D: enumerated type mixed with another type
+Source\main.c(292): warning:  #188-D: enumerated type mixed with another type
   			STM_EVAL_LEDToggle(leds[
 LUE_POSITION]);
-Source\main.c(286): warning:  #188-D: enumerated type mixed with another type
+Source\main.c(307): warning:  #188-D: enumerated type mixed with another type
   					STM_EVAL_LEDOff(leds[
 LUE_POSITION]);
-Source\main.c(324): warning:  #550-D: variable "I2C_InitStructure"  was set but never used
+Source\main.c(345): warning:  #550-D: variable "I2C_InitStructure"  was set but never used
   	GPIO_InitTypeDef I2C_InitStructure;
-Source\main.c(429): warning:  #111-D: statement is unreachable
+Source\main.c(452): warning:  #111-D: statement is unreachable
     return 0;
 Source\main.c: 16 warnings, 0 errors
 compiling queue.c...
-compiling tasks.c...
 compiling croutine.c...
-compiling timers.c...
-compiling port.c...
+compiling tasks.c...
 compiling heap_2.c...
+compiling port.c...
 linking...
-Program Size: Code=25444 RO-data=488 RW-data=284 ZI-data=78836  
+Program Size: Code=25508 RO-data=488 RW-data=288 ZI-data=78840  
 FromELF: creating hex file...
 ".\Output\freertos_project.axf" - 0 Error(s), 16 Warning(s).
 

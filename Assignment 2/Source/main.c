@@ -67,7 +67,28 @@ SemaphoreHandle_t xLEDCycleLock;
 SemaphoreHandle_t xDoubleClickLock;
 SemaphoreHandle_t xLEDBrewLock[4];
 
+uint32_t multiplier;
+
 #define STACK_SIZE_MIN	128	/* usStackDepth	- the stack size DEFINED IN WORDS.*/
+
+void TM_Delay_Init(void) {
+    RCC_ClocksTypeDef RCC_Clocks;
+    
+    /* Get system clocks */
+    RCC_GetClocksFreq(&RCC_Clocks);
+    
+    /* While loop takes 4 cycles */
+    /* For 1 us delay, we need to divide with 4M */
+    multiplier = RCC_Clocks.HCLK_Frequency / 4000000;
+}
+
+void TM_DelayMillis(uint32_t millis) {
+    /* Multiply millis with multipler */
+    /* Substract 10 */
+    millis = 1000 * millis * multiplier - 10;
+    /* 4 cycles for one loop */
+    while (millis--);
+}
 
 void vButtonDebounce( TimerHandle_t xTimer )
  {
@@ -179,7 +200,7 @@ static void vBrewGreenTask(void *pvParameters){
 		if(xSemaphoreTake(xLEDBrewLock[GREEN_POSITION], (TickType_t) 10) == pdTRUE) {
 			//Toggle led every 500ms
 			STM_EVAL_LEDToggle(leds[GREEN_POSITION]);
-			vTaskDelay(500 / portTICK_RATE_MS);
+			TM_DelayMillis(500);
 			
 			current_cycle++;
 			
@@ -209,7 +230,7 @@ static void vBrewOrangeTask(void *pvParameters){
 		if(xSemaphoreTake(xLEDBrewLock[ORANGE_POSITION], (TickType_t) 10) == pdTRUE) {
 			//Toggle led every 500ms
 			STM_EVAL_LEDToggle(leds[ORANGE_POSITION]);
-			vTaskDelay(500 / portTICK_RATE_MS);
+			TM_DelayMillis(500);
 			
 			current_cycle++;
 			
@@ -239,7 +260,7 @@ static void vBrewRedTask(void *pvParameters){
 		if(xSemaphoreTake(xLEDBrewLock[RED_POSITION], (TickType_t) 10) == pdTRUE) {
 			//Toggle led every 500ms
 			STM_EVAL_LEDToggle(leds[RED_POSITION]);
-			vTaskDelay(500 / portTICK_RATE_MS);
+			TM_DelayMillis(500);
 			
 			current_cycle++;
 			
@@ -269,7 +290,7 @@ static void vBrewBlueTask(void *pvParameters){
 		if(xSemaphoreTake(xLEDBrewLock[BLUE_POSITION], (TickType_t) 10) == pdTRUE) {
 			//Toggle led every 500ms
 			STM_EVAL_LEDToggle(leds[BLUE_POSITION]);
-			vTaskDelay(500 / portTICK_RATE_MS);
+			TM_DelayMillis(500);
 			
 			current_cycle++;
 			
@@ -388,6 +409,8 @@ int main(void)
 	STM_EVAL_LEDInit(LED_ORANGE);
 	STM_EVAL_LEDInit(LED_RED);
 	STM_EVAL_PBInit(BUTTON_USER ,BUTTON_MODE_EXTI);
+	
+	TM_Delay_Init();
 	
 	STM_EVAL_LEDToggle(LED_GREEN);
 	
