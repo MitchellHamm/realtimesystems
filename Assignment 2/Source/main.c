@@ -68,6 +68,21 @@ SemaphoreHandle_t xDoubleClickLock;
 SemaphoreHandle_t xLEDBrewLock[4];
 
 #define STACK_SIZE_MIN	128	/* usStackDepth	- the stack size DEFINED IN WORDS.*/
+
+void vButtonDebounce( TimerHandle_t xTimer )
+ {
+	 
+	 
+   xTimerStop( xTimer, 0 );
+ }
+ 
+ void vDoubleClickTimer( TimerHandle_t xTimer)
+ {
+		
+	 
+		//Stop the timer
+	  xTimerStop( xTimer, 0 );
+ }
  
 static void vDoubleClickTask(void *pvParameters)
 {
@@ -385,6 +400,10 @@ int main(void)
 	xTaskCreate( vBrewBlueTask, "Brew Blue", configMINIMAL_STACK_SIZE, NULL, BREW_PRIORITY, NULL);
 	xTaskCreate( vDoubleClickTask, "Double Click", configMINIMAL_STACK_SIZE, NULL, BUTTON_PRIORITY, NULL);
 	
+	//Create the timer to ignore the button debounce
+	xTimers[0] = xTimerCreate("Debounce Timer", DEBOUNCE_DELAY, pdTRUE, (void *) 0, vButtonDebounce);
+	//Create the timer to measure double clicks
+	xTimers[1] = xTimerCreate("Double Click Timer", DOUBLE_CLICK_TIME, pdTRUE, (void *) 0, vDoubleClickTimer);
 	//Create semaphore to block debouncing
 	xDebounceLock = xSemaphoreCreateBinary();
 	//Create semaphore to block the led cycling
@@ -397,6 +416,8 @@ int main(void)
 	xLEDBrewLock[2] = xSemaphoreCreateBinary();
 	xLEDBrewLock[3] = xSemaphoreCreateBinary();
 	
+	//Initally take the led semaphore so that when the task starts it's stuck
+	//xSemaphoreTake(xLEDCycleLock, (TickType_t) 0);
 	//Initially have the debounce semaphore open so the first button press can take the lock in the ISR
 	xSemaphoreGive(xDebounceLock);
 	
