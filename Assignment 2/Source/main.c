@@ -22,7 +22,7 @@
 //This constant defines how long the board will ignore subsequent button presses for
 #define DEBOUNCE_DELAY	( 150 / portTICK_RATE_MS )
 //This constant defines how long the board will wait until processing button presses
-#define DOUBLE_CLICK_TIME ( 250 / portTICK_RATE_MS)
+#define DOUBLE_CLICK_TIME ( 500 / portTICK_RATE_MS)
 #define GREEN_POSITION 0
 #define ORANGE_POSITION 1
 #define RED_POSITION 2
@@ -46,7 +46,7 @@ typedef struct {
 int currLed = 0;
 int codecInit = 0;
 int leds[] = {LED_GREEN, LED_ORANGE, LED_RED, LED_BLUE};
-int brew_times[] = {5, 6, 7, 8};
+int brew_times[] = {20, 21, 22, 23};
 int currently_brewing[] = {0, 0, 0, 0};
 int brew_count = 0;
 int click_count = 0;
@@ -64,48 +64,41 @@ void initFilter(fir_8* theFilter);
 TimerHandle_t xTimers[2];
 SemaphoreHandle_t xDebounceLock;
 SemaphoreHandle_t xLEDCycleLock;
+SemaphoreHandle_t xDoubleClickLock;
 SemaphoreHandle_t xLEDBrewLock[4];
 
 #define STACK_SIZE_MIN	128	/* usStackDepth	- the stack size DEFINED IN WORDS.*/
-
-void vButtonDebounce( TimerHandle_t xTimer )
- {
-	 //Incriment the click count since this was a legitemate button press
-	 click_count++;
-	 
-	 //Once the timer resets, give the semaphore back so that we can unblock the button
-	 xSemaphoreGive(xDebounceLock);
-	 
-   xTimerStop( xTimer, 0 );
- }
  
- void vDoubleClickTimer( TimerHandle_t xTimer)
- {
-		if(click_count == 2) {
-			//Trigger double click
-			//Run brew routines by unlocking the current led semaphore
-			currently_brewing[currLed] = 1;
-			brew_count++;
-			xSemaphoreGive(xLEDBrewLock[currLed]);
-		} else if(click_count == 1) {
-			//Trigger single click
-			//Run the button press routines by giving the semaphore and letting the button task execute
-			xSemaphoreGive(xLEDCycleLock);
-		}
+static void vDoubleClickTask(void *pvParameters)
+{
+	for(;;)
+	{
+		if(xSemaphoreTake(xDoubleClickLock, (TickType_t) 10) == pdTRUE) {
+			vTaskDelay(DOUBLE_CLICK_TIME / portTICK_RATE_MS);
+			if(click_count == 2) {
+				//Trigger double click
+				//Run brew routines by unlocking the current led semaphore
+				currently_brewing[currLed] = 1;
+				brew_count++;
+				xSemaphoreGive(xLEDBrewLock[currLed]);
+			} else if(click_count == 1) {
+				//Trigger single click
+				//Run the button press routines by giving the semaphore and letting the button task execute
+				xSemaphoreGive(xLEDCycleLock);
+			}
 		
-		//Reset the click count
-		click_count = 0;
-	 
-		//Stop the timer
-	  xTimerStop( xTimer, 0 );
- }
+			//Reset the click count
+			click_count = 0;
+		}
+	}
+}
 
 static void vButtonTask( void *pvParameters )
 {
 	for( ;; )
 	{
 		//Poll the semaphore to see when it unlocks
-		if(xSemaphoreTake(xLEDCycleLock, (TickType_t) 0) == pdTRUE) {
+		if(xSemaphoreTake(xLEDCycleLock, (TickType_t) 10) == pdTRUE) {
 			int done = 0;
 			//Once the button timer reset has given us the semaphore, change the current LED
 			STM_EVAL_LEDOff(leds[currLed]);
@@ -168,7 +161,7 @@ static void vBrewGreenTask(void *pvParameters){
 	{
 		int i = 0;
 		//Poll the green led semaphore
-		if(xSemaphoreTake(xLEDBrewLock[GREEN_POSITION], (TickType_t) 0) == pdTRUE) {
+		if(xSemaphoreTake(xLEDBrewLock[GREEN_POSITION], (TickType_t) 10) == pdTRUE) {
 			//Toggle led every 500ms
 			STM_EVAL_LEDToggle(leds[GREEN_POSITION]);
 			vTaskDelay(500 / portTICK_RATE_MS);
@@ -198,7 +191,7 @@ static void vBrewOrangeTask(void *pvParameters){
 	for( ;; )
 	{
 		//Poll the orange led semaphore
-		if(xSemaphoreTake(xLEDBrewLock[ORANGE_POSITION], (TickType_t) 0) == pdTRUE) {
+		if(xSemaphoreTake(xLEDBrewLock[ORANGE_POSITION], (TickType_t) 10) == pdTRUE) {
 			//Toggle led every 500ms
 			STM_EVAL_LEDToggle(leds[ORANGE_POSITION]);
 			vTaskDelay(500 / portTICK_RATE_MS);
@@ -228,7 +221,7 @@ static void vBrewRedTask(void *pvParameters){
 	for( ;; )
 	{
 		//Poll the red led semaphore
-		if(xSemaphoreTake(xLEDBrewLock[RED_POSITION], (TickType_t) 0) == pdTRUE) {
+		if(xSemaphoreTake(xLEDBrewLock[RED_POSITION], (TickType_t) 10) == pdTRUE) {
 			//Toggle led every 500ms
 			STM_EVAL_LEDToggle(leds[RED_POSITION]);
 			vTaskDelay(500 / portTICK_RATE_MS);
@@ -258,7 +251,7 @@ static void vBrewBlueTask(void *pvParameters){
 	for( ;; )
 	{
 		//Poll the blue led semaphore
-		if(xSemaphoreTake(xLEDBrewLock[BLUE_POSITION], (TickType_t) 0) == pdTRUE) {
+		if(xSemaphoreTake(xLEDBrewLock[BLUE_POSITION], (TickType_t) 10) == pdTRUE) {
 			//Toggle led every 500ms
 			STM_EVAL_LEDToggle(leds[BLUE_POSITION]);
 			vTaskDelay(500 / portTICK_RATE_MS);
@@ -285,16 +278,26 @@ static void vBrewBlueTask(void *pvParameters){
 
 void EXTI0_IRQHandler( void )
 {
+	 static signed portBASE_TYPE xHigherPriorityTaskWoken;
 	 // Checks whether the interrupt from EXTI0 or not
     if (EXTI_GetITStatus(EXTI_Line0) != RESET)
     {      
+				xHigherPriorityTaskWoken = pdFALSE;
 				//Button press ocurred, check if we can access the semaphore
 				//If the semaphore is not available it means we need to ignore the button debounce
 				if(xSemaphoreTakeFromISR(xDebounceLock, NULL) == pdTRUE) {
-					//Start the debounce timer to block debounce
-					xTimerStartFromISR(xTimers[0],0);
-					//Start the click count timer to handle button press actions
-					xTimerStartFromISR(xTimers[1],0);
+					//Crude loop to ignore button debounce
+					int i = 0;
+					while( i < 6000000) {
+						i++;
+					}
+					
+					//Incriment the click count since this was a legitemate button press
+					click_count++;
+	 
+					//give the semaphore back so that we can unblock the button
+					xSemaphoreGiveFromISR(xDebounceLock, &xHigherPriorityTaskWoken);
+					xSemaphoreGiveFromISR(xDoubleClickLock, &xHigherPriorityTaskWoken);
 				}
 			
 			// Clears the EXTI line pending bit
@@ -380,15 +383,13 @@ int main(void)
 	xTaskCreate( vBrewOrangeTask, "Brew Orange", configMINIMAL_STACK_SIZE, NULL, BREW_PRIORITY, NULL);
 	xTaskCreate( vBrewRedTask, "Brew Red", configMINIMAL_STACK_SIZE, NULL, BREW_PRIORITY, NULL);
 	xTaskCreate( vBrewBlueTask, "Brew Blue", configMINIMAL_STACK_SIZE, NULL, BREW_PRIORITY, NULL);
+	xTaskCreate( vDoubleClickTask, "Double Click", configMINIMAL_STACK_SIZE, NULL, BUTTON_PRIORITY, NULL);
 	
-	//Create the timer to ignore the button debounce
-	xTimers[0] = xTimerCreate("Debounce Timer", DEBOUNCE_DELAY, pdTRUE, (void *) 0, vButtonDebounce);
-	//Create the timer to measure double clicks
-	xTimers[1] = xTimerCreate("Double Click Timer", DOUBLE_CLICK_TIME, pdTRUE, (void *) 0, vDoubleClickTimer);
 	//Create semaphore to block debouncing
 	xDebounceLock = xSemaphoreCreateBinary();
 	//Create semaphore to block the led cycling
 	xLEDCycleLock = xSemaphoreCreateBinary();
+	xDoubleClickLock = xSemaphoreCreateBinary();
 	
 	//Create the brew led semaphores
 	xLEDBrewLock[0] = xSemaphoreCreateBinary();
@@ -396,10 +397,10 @@ int main(void)
 	xLEDBrewLock[2] = xSemaphoreCreateBinary();
 	xLEDBrewLock[3] = xSemaphoreCreateBinary();
 	
-	//Initally take the led semaphore so that when the task starts it's stuck
-	xSemaphoreTake(xLEDCycleLock, (TickType_t) 0);
 	//Initially have the debounce semaphore open so the first button press can take the lock in the ISR
 	xSemaphoreGive(xDebounceLock);
+	
+	xTimerStart(xTimers[0], 0);
 	
 	vTaskStartScheduler();
 	
