@@ -31,18 +31,12 @@
 #define NOTEAMPLITUDE 500.0
 
 // Sched types: 0=FPS, 1=EDF, 2=LLF
-int SCHED_TYPE = 2;
+int SCHED_TYPE = 1;
 // Brew types: 0=same start time, 1=diff start time
 int COFFEE_START = 0;
 
 int schedPrio = 5;
 int brewPrio = 1;
-
-
-void vLedBlinkBlue(void *pvParameters);
-void vLedBlinkRed(void *pvParameters);
-void vLedBlinkGreen(void *pvParameters);
-void vLedBlinkOrange(void *pvParameters);
 
 typedef struct {
 	float tabs[8];
@@ -61,7 +55,6 @@ typedef struct {
 typedef struct {
 	coffee coffee;
 	int state; // 0=running, 1=ready, 2=blocked
-	int nextStart;
 	int timeLeft;
 } brewTask;
 
@@ -81,16 +74,14 @@ brewTask coffees[4];
 int prio1Count = 1;
 int prio2Count = 2;
 int prio3Count = 1;
-int currRunning = 0;
+int running = 0;
+int ticks = 0;
 
 
 int currLed = 0;
 int codecInit = 0;
 int leds[] = {LED_GREEN, LED_ORANGE, LED_RED, LED_BLUE};
 int brew_times[] = {2, 21, 22, 23};
-int currently_brewing[] = {0, 0, 0, 0};
-int brew_count = 0;
-int click_count = 0;
 volatile uint32_t sampleCounter = 0;
 volatile int16_t sample = 0;
 fir_8 filt;
@@ -103,9 +94,7 @@ float updateFilter(fir_8* theFilter, float newValue);
 
 void initFilter(fir_8* theFilter);
 SemaphoreHandle_t xDebounceLock;
-SemaphoreHandle_t xLEDCycleLock;
-SemaphoreHandle_t xDoubleClickLock;
-SemaphoreHandle_t xLEDBrewLock[4];
+SemaphoreHandle_t xSchedulerLock;
 
 uint32_t multiplier;
 
@@ -129,66 +118,8 @@ void TM_DelayMillis(uint32_t millis) {
     /* 4 cycles for one loop */
     while (millis--);
 }
- 
-static void vDoubleClickTask(void *pvParameters)
-{
-	for(;;)
-	{
-		if(xSemaphoreTake(xDoubleClickLock, (TickType_t) 10) == pdTRUE) {
-			vTaskDelay(DOUBLE_CLICK_TIME / portTICK_RATE_MS);
-			if(click_count == 2) {
-				//Trigger double click
-				//Run brew routines by unlocking the current led semaphore
-				currently_brewing[currLed] = 1;
-				brew_count++;
-				xSemaphoreGive(xLEDBrewLock[currLed]);
-			} else if(click_count == 1) {
-				//Trigger single click
-				//Run the button press routines by giving the semaphore and letting the button task execute
-				xSemaphoreGive(xLEDCycleLock);
-			}
-		
-			//Reset the click count
-			click_count = 0;
-		}
-	}
-}
 
-static void vButtonTask( void *pvParameters )
-{
-	for( ;; )
-	{
-		//Poll the semaphore to see when it unlocks
-		if(xSemaphoreTake(xLEDCycleLock, (TickType_t) 10) == pdTRUE) {
-			int done = 0;
-			//Once the button timer reset has given us the semaphore, change the current LED
-			STM_EVAL_LEDOff(leds[currLed]);
-			if(currLed == 3) {
-				currLed = 0;
-			} else {
-				currLed++;
-			}
-			
-				//Not all coffee brewing so we can change the current led
-				while(done < 3) {
-					//Check if we're about to switch to an led that's currently brewing
-					if(currently_brewing[currLed] == 1) {
-						currLed++;
-						done++;
-					} else {
-						done = 4;
-					}
-					if(currLed >= 4) {
-						currLed = 0;
-					}
-				}
-				
-				STM_EVAL_LEDOn(leds[currLed]);
-		}
-	}
-}
-
-/*void playSound() {
+void playSound() {
 	int j = 0;
 	codec_init();
 		codec_ctrl_init();
@@ -214,137 +145,12 @@ static void vButtonTask( void *pvParameters )
 	}
 }
 
-static void vBrewGreenTask(void *pvParameters){
-	int current_cycle = 0;
-	for( ;; )
-	{
-		int i = 0;
-		//Poll the green led semaphore
-		if(xSemaphoreTake(xLEDBrewLock[GREEN_POSITION], (TickType_t) 10) == pdTRUE) {
-			//Toggle led every 500ms
-			STM_EVAL_LEDToggle(leds[GREEN_POSITION]);
-			TM_DelayMillis(500);
-			
-			current_cycle++;
-			
-			//If there are still cycles left to complete give the semaphore back
-			if(current_cycle != (brew_times[GREEN_POSITION]*2)) {
-				xSemaphoreGive(xLEDBrewLock[GREEN_POSITION]);
-			} else {
-				//Keep the semaphore locked and reset the cycle count if we need to brew again
-				current_cycle = 0;
-				currently_brewing[GREEN_POSITION] = 0;
-				brew_count--;
-				//Turn off the LED if it isn't the current led
-				if(currLed != GREEN_POSITION) {
-					STM_EVAL_LEDOff(leds[GREEN_POSITION]);
-				}
-				playSound();
-			}
-		}
-	}
-}
-
-static void vBrewOrangeTask(void *pvParameters){
-	int current_cycle = 0;
-	for( ;; )
-	{
-		//Poll the orange led semaphore
-		if(xSemaphoreTake(xLEDBrewLock[ORANGE_POSITION], (TickType_t) 10) == pdTRUE) {
-			//Toggle led every 500ms
-			STM_EVAL_LEDToggle(leds[ORANGE_POSITION]);
-			TM_DelayMillis(500);
-			
-			current_cycle++;
-			
-			//If there are still cycles left to complete give the semaphore back
-			if(current_cycle != (brew_times[ORANGE_POSITION]*2)) {
-				xSemaphoreGive(xLEDBrewLock[ORANGE_POSITION]);
-			} else {
-				//Keep the semaphore locked and reset the cycle count if we need to brew again
-				current_cycle = 0;
-				currently_brewing[ORANGE_POSITION] = 0;
-				brew_count--;
-				//Turn off the LED if it isn't the current led
-				if(currLed != ORANGE_POSITION) {
-					STM_EVAL_LEDOff(leds[ORANGE_POSITION]);
-				}
-				playSound();
-			}
-		}
-	}
-}
-
-static void vBrewRedTask(void *pvParameters){
-	int current_cycle = 0;
-	for( ;; )
-	{
-		//Poll the red led semaphore
-		if(xSemaphoreTake(xLEDBrewLock[RED_POSITION], (TickType_t) 10) == pdTRUE) {
-			//Toggle led every 500ms
-			STM_EVAL_LEDToggle(leds[RED_POSITION]);
-			TM_DelayMillis(500);
-			
-			current_cycle++;
-			
-			//If there are still cycles left to complete give the semaphore back
-			if(current_cycle != (brew_times[RED_POSITION]*2)) {
-				xSemaphoreGive(xLEDBrewLock[RED_POSITION]);
-			} else {
-				//Keep the semaphore locked and reset the cycle count if we need to brew again
-				current_cycle = 0;
-				currently_brewing[RED_POSITION] = 0;
-				brew_count--;
-				//Turn off the LED if it isn't the current led
-				if(currLed != RED_POSITION) {
-					STM_EVAL_LEDOff(leds[RED_POSITION]);
-				}
-				playSound();
-			}
-		}
-	}
-}
-
-static void vBrewBlueTask(void *pvParameters){
-	int current_cycle = 0;
-	for( ;; )
-	{
-		//Poll the blue led semaphore
-		if(xSemaphoreTake(xLEDBrewLock[BLUE_POSITION], (TickType_t) 10) == pdTRUE) {
-			//Toggle led every 500ms
-			STM_EVAL_LEDOn(leds[BLUE_POSITION]);
-			vTaskDelay(500);
-			
-			current_cycle++;
-			
-			//If there are still cycles left to complete give the semaphore back
-			if(current_cycle != (brew_times[BLUE_POSITION]*2)) {
-				xSemaphoreGive(xLEDBrewLock[BLUE_POSITION]);
-			} else {
-				//Keep the semaphore locked and reset the cycle count if we need to brew again
-				current_cycle = 0;
-				currently_brewing[BLUE_POSITION] = 0;
-				brew_count--;
-				//Turn off the LED if it isn't the current led
-				if(currLed != BLUE_POSITION) {
-					STM_EVAL_LEDOff(leds[BLUE_POSITION]);
-				}
-				playSound();
-			}
-		}
-	}
-}*/
-
-int running = 0;
-int ticks = 0;
-
 static void vBrewTask0(void *pvParameters) {
 	for(;;) {
-				if(xSemaphoreTake(xLEDBrewLock[BLUE_POSITION], (TickType_t) 10) == pdTRUE) {
+				if(xSemaphoreTake(xSchedulerLock, (TickType_t) 10) == pdTRUE) {
 		// Pull the brew task from the parameters
 	  brewTask *p = (brewTask*) &(*pvParameters);
 	  brewTask curr = *p;
-		int i = 0;
 		STM_EVAL_LEDOn(curr.coffee.led);
 		
 		curr.timeLeft--;
@@ -369,7 +175,7 @@ static void vBrewTask0(void *pvParameters) {
 		
 		TM_DelayMillis(500);
 		
-		xSemaphoreGive(xLEDBrewLock[BLUE_POSITION]);
+		xSemaphoreGive(xSchedulerLock);
 		vTaskDelete(NULL);
 	}
 }
@@ -377,7 +183,7 @@ static void vBrewTask0(void *pvParameters) {
 
 static void vBrewTask1(void *pvParameters) {
 	for(;;) {
-				if(xSemaphoreTake(xLEDBrewLock[BLUE_POSITION], (TickType_t) 10) == pdTRUE) {
+				if(xSemaphoreTake(xSchedulerLock, (TickType_t) 10) == pdTRUE) {
 		// Pull the brew task from the parameters
 	  int *p = (int*) &(*pvParameters);
 	  int index = *p;
@@ -389,6 +195,7 @@ static void vBrewTask1(void *pvParameters) {
 		if(coffees[index].timeLeft == 0) {
 			coffees[index].timeLeft = coffees[index].coffee.duration;
 			coffees[index].state = 2;
+			playSound();
 		} else {
 			coffees[index].state = 1;
 		}
@@ -398,7 +205,7 @@ static void vBrewTask1(void *pvParameters) {
 		STM_EVAL_LEDOff(coffees[index].coffee.led);
 		
 		TM_DelayMillis(500);
-		xSemaphoreGive(xLEDBrewLock[BLUE_POSITION]);
+		xSemaphoreGive(xSchedulerLock);
 		vTaskDelete(NULL);
 	}
 }
@@ -410,12 +217,24 @@ static void vScheduler(void *pvParameters) {
 		int i = 0;
 		int found = 0;
 		brewTask task1, task2, task3;
-		brewTask *pt1, *pt2, *pt3;
 		int j = 0;
 		int earliest = 1000;
 		int foundIndex = -1;
 		int laxity = 1000;
-				if(xSemaphoreTake(xLEDBrewLock[BLUE_POSITION], (TickType_t) 10) == pdTRUE) {
+		if(xSemaphoreTake(xSchedulerLock, (TickType_t) 10) == pdTRUE) {
+					
+			if(COFFEE_START == 1) {
+				if(ticks == 10) {
+					xQueueSend(prio1, (void*)&coffees[1], (TickType_t) 0);
+					coffees[1] = lTask;
+				} else if(ticks == 20) {
+					xQueueSend(prio2, (void*)&coffees[2], (TickType_t) 0);
+					coffees[2] = cTask;
+				} else if(ticks == 30) {
+					xQueueSend(prio2, (void*)&coffees[3], (TickType_t) 0);
+					coffees[3] = mTask;
+				}
+			}
 		/************************************************
 		* FIXED PRIORITY SCHEDULER
 		* Use priority queues to determine what coffee 
@@ -423,82 +242,83 @@ static void vScheduler(void *pvParameters) {
 		************************************************/
 		if(SCHED_TYPE == 0) {
 			
+			// Update any task states if necessary
 			while(j < prio1Count) {
-			xQueueReceive(prio1, &task1, (TickType_t)10);
-			if(ticks % task1.coffee.period == 0) {
-				task1.state = 1;
+				xQueueReceive(prio1, &task1, (TickType_t)10);
+				if(ticks % task1.coffee.period == 0) {
+					task1.state = 1;
+				}
+				xQueueSendToBack(prio1, (void*)&task1, (TickType_t) 0);
+				j++;
 			}
-			xQueueSendToBack(prio1, (void*)&task1, (TickType_t) 0);
-			j++;
-		}
 		
-		j = 0;
-		while(j < prio2Count) {
-			xQueueReceive(prio2, &task2, (TickType_t)10);
-			if(ticks % task2.coffee.period == 0) {
-				task2.state = 1;
+			j = 0;
+			while(j < prio2Count) {
+				xQueueReceive(prio2, &task2, (TickType_t)10);
+				if(ticks % task2.coffee.period == 0) {
+					task2.state = 1;
+				}
+				xQueueSendToBack(prio2, (void*)&task2, (TickType_t) 0);
+				j++;
 			}
-			xQueueSendToBack(prio2, (void*)&task2, (TickType_t) 0);
-			j++;
-		}
 		
-		j = 0;
-		while(j < prio3Count) {
-			xQueueReceive(prio3, &task3, (TickType_t)10);
-			if(ticks % task3.coffee.period == 0) {
-				task3.state = 1;
+			j = 0;
+			while(j < prio3Count) {
+				xQueueReceive(prio3, &task3, (TickType_t)10);
+				if(ticks % task3.coffee.period == 0) {
+					task3.state = 1;
+				}
+				xQueueSendToBack(prio3, (void*)&task3, (TickType_t) 0);
+				j++;
 			}
-			xQueueSendToBack(prio3, (void*)&task3, (TickType_t) 0);
-			j++;
-		}
 			
-				while(found == 0 && i < prio3Count) {
-				  xQueueReceive(prio3, &task1, (TickType_t)10);
-				  if(task1.state == 1) {
+			while(found == 0 && i < prio3Count) {
+			  xQueueReceive(prio3, &task1, (TickType_t)10);
+			  if(task1.state == 1) {
+				  // Task is ready, run it
+					found = 1;
+					task1.state = 0;
+					xTaskCreate(vBrewTask0, "Brew task", configMINIMAL_STACK_SIZE, (void*)&task1, brewPrio, NULL);
+				} else {
+					// Add to the back of the queue
+				  xQueueSendToBack(prio3, (void*)&task1, (TickType_t) 10);
+				}
+			  i++;
+		  }
+			
+			if(found == 0) {
+				i = 0;
+			  while(found == 0 && i < prio2Count) {
+				  xQueueReceive(prio2, &task2, (TickType_t)10);
+				  if(task2.state == 1) {
 					  // Task is ready, run it
 					  found = 1;
-					  task1.state = 0;
-						xTaskCreate(vBrewTask0, "Brew task", configMINIMAL_STACK_SIZE, (void*)&task1, brewPrio, NULL);
+					  task2.state = 0;
+						xTaskCreate(vBrewTask0, "Brew task", configMINIMAL_STACK_SIZE, (void*)&task2, brewPrio, NULL);
 				  } else {
 						// Add to the back of the queue
-					  xQueueSendToBack(prio3, (void*)&task1, (TickType_t) 10);
+					  xQueueSendToBack(prio2, (void*)&task2, (TickType_t) 10);
 					}
 				  i++;
 			  }
-			
-				if(found == 0) {
-				  i = 0;
-			    while(found == 0 && i < prio2Count) {
-				    xQueueReceive(prio2, &task2, (TickType_t)10);
-				    if(task2.state == 1) {
-					    // Task is ready, run it
-					    found = 1;
-					    task2.state = 0;
-						  xTaskCreate(vBrewTask0, "Brew task", configMINIMAL_STACK_SIZE, (void*)&task2, brewPrio, NULL);
-				    } else {
-						  // Add to the back of the queue
-					    xQueueSendToBack(prio2, (void*)&task2, (TickType_t) 10);
-					  }
-				    i++;
-			    }
-			  }
+			}
 				
-				if(found == 0) {
-				  i = 0;
-			    while(found == 0 && i < prio1Count) {
-						xQueueReceive(prio1, &task3, (TickType_t)10);
-				    if(task3.state == 1) {
-					    // Task is ready, run it
-					    found = 1;
-					    task3.state = 0;
-						  xTaskCreate(vBrewTask0, "Brew task", configMINIMAL_STACK_SIZE, (void*)&task3, brewPrio, NULL);
-				    } else {
-						  // Add to the back of the queue
-					    xQueueSendToBack(prio1, (void*)&task3, (TickType_t) 10);
-				   	}
-				    i++;
-			    }
-			  }
+			if(found == 0) {
+				i = 0;
+			  while(found == 0 && i < prio1Count) {
+					xQueueReceive(prio1, &task3, (TickType_t)10);
+				  if(task3.state == 1) {
+				    // Task is ready, run it
+				    found = 1;
+				    task3.state = 0;
+					  xTaskCreate(vBrewTask0, "Brew task", configMINIMAL_STACK_SIZE, (void*)&task3, brewPrio, NULL);
+				   } else {
+					  // Add to the back of the queue
+				    xQueueSendToBack(prio1, (void*)&task3, (TickType_t) 10);
+				   }
+				   i++;
+			   }
+			 }
 		}
 		
 		/************************************************
@@ -507,6 +327,7 @@ static void vScheduler(void *pvParameters) {
 		* to brew next
 		************************************************/
 		else if(SCHED_TYPE == 1) {
+			// Update any task states if necessary
 			  for(i = 0; i < 4; i++) {
 					if(ticks % coffees[i].coffee.period == 0) {
 						coffees[i].state = 1;
@@ -536,6 +357,8 @@ static void vScheduler(void *pvParameters) {
 		* 
 		************************************************/
 		else if(SCHED_TYPE == 2) {
+			
+			// Update any task states if necessary
 			for(i = 0; i < 4; i++) {
 					if(ticks % coffees[i].coffee.period == 0) {
 						coffees[i].state = 1;
@@ -561,12 +384,9 @@ static void vScheduler(void *pvParameters) {
 		}
 		
 		// Increment the tick count
-		xSemaphoreGive(xLEDBrewLock[BLUE_POSITION]);
+		xSemaphoreGive(xSchedulerLock);
 		vTaskDelay(1000);
 		ticks++;
-
-		//Update proc states from blocked to ready if any are now ready after this cycle
-		/**/
 	}
 }
 }
@@ -587,12 +407,17 @@ void EXTI0_IRQHandler( void )
 						i++;
 					}
 					
-					//Incriment the click count since this was a legitemate button press
-					click_count++;
+					//Start or stop the scheduler
+					if(running == 0) {
+						xSemaphoreGiveFromISR(xSchedulerLock, &xHigherPriorityTaskWoken);
+						running = 1;
+					} else {
+						xSemaphoreTakeFromISR(xSchedulerLock, &xHigherPriorityTaskWoken);
+						running = 0;
+					}
 	 
 					//give the semaphore back so that we can unblock the button
 					xSemaphoreGiveFromISR(xDebounceLock, &xHigherPriorityTaskWoken);
-					xSemaphoreGiveFromISR(xDoubleClickLock, &xHigherPriorityTaskWoken);
 				}
 			
 			// Clears the EXTI line pending bit
@@ -630,52 +455,7 @@ void initPlayback(){
 	I2C_Cmd(I2C1, ENABLE);          //turn it on
 }
 
-//******************************************************************************
-int main(void)
-{
-	/*!< At this stage the microcontroller clock setting is already configured,
-	   this is done through SystemInit() function which is called from startup
-	   file (startup_stm32f4xx.s) before to branch to application main.
-	   To reconfigure the default setting of SystemInit() function, refer to
-	   system_stm32f4xx.c file
-	 */
-	
-	/*!< Most systems default to the wanted configuration, with the noticeable 
-		exception of the STM32 driver library. If you are using an STM32 with 
-		the STM32 driver library then ensure all the priority bits are assigned 
-		to be preempt priority bits by calling 
-		NVIC_PriorityGroupConfig( NVIC_PriorityGroup_4 ); before the RTOS is started.
-	*/
-	
-	brewTask *p;
-	
-	GPIO_InitTypeDef GPIO_InitStructure;
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_9; //I2S SCL and SDA pins
-  GPIO_PinAFConfig(GPIOA, GPIO_PinSource4, GPIO_AF_SPI3);
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD,ENABLE);
-	SysTick_Config(SystemCoreClock/1000);
-
-	GPIO_Init(GPIOD, &GPIO_InitStructure);
-
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
-	codec_init();
-	
-	NVIC_PriorityGroupConfig( NVIC_PriorityGroup_4 );
-	
-	STM_EVAL_LEDInit(LED_BLUE);
-	STM_EVAL_LEDInit(LED_GREEN);
-	STM_EVAL_LEDInit(LED_ORANGE);
-	STM_EVAL_LEDInit(LED_RED);
-	STM_EVAL_PBInit(BUTTON_USER ,BUTTON_MODE_EXTI);
-	
-	TM_Delay_Init();
-	
-	//STM_EVAL_LEDToggle(LED_GREEN);
-	
+void initDelayCoffees() {
 	espresso.led = LED_BLUE;
 	espresso.duration = 3;
 	espresso.deadline = 5;
@@ -702,19 +482,64 @@ int main(void)
 	
 	eTask.coffee = espresso;
 	eTask.state = 1;
-	eTask.nextStart = 0;
 	eTask.timeLeft = 3;
 	lTask.coffee = lattee;
 	lTask.state = 1;
-	lTask.nextStart = 0;
 	lTask.timeLeft = 4;
 	cTask.coffee = cappuccino;
 	cTask.state = 1;
-	cTask.nextStart = 0;
 	cTask.timeLeft = 4;
 	mTask.coffee = mocha;
 	mTask.state = 1;
-	mTask.nextStart = 0;
+	mTask.timeLeft = 6;
+	
+	prio1 = xQueueCreate(4, sizeof(brewTask));
+	prio2 = xQueueCreate(4, sizeof(brewTask));
+	prio3 = xQueueCreate(4, sizeof(brewTask));
+	
+	coffees[0] = eTask;
+	
+	xQueueSend(prio3, (void*)&eTask, (TickType_t) 0);
+	
+	ticks = 0;
+}
+
+void initCoffees() {
+	espresso.led = LED_BLUE;
+	espresso.duration = 3;
+	espresso.deadline = 5;
+	espresso.period = 20;
+	espresso.priority = 3;
+	
+	lattee.led = LED_GREEN;
+	lattee.duration = 4;
+	lattee.deadline = 10;
+	lattee.period = 30;
+	lattee.priority = 1;
+	
+	cappuccino.led = LED_ORANGE;
+	cappuccino.duration = 4;
+	cappuccino.deadline = 10;
+	cappuccino.period = 40;
+	cappuccino.priority = 2;
+	
+	mocha.led = LED_RED;
+	mocha.duration = 6;
+	mocha.deadline = 15;
+	mocha.period = 40;
+	mocha.priority = 2;
+	
+	eTask.coffee = espresso;
+	eTask.state = 1;
+	eTask.timeLeft = 3;
+	lTask.coffee = lattee;
+	lTask.state = 1;
+	lTask.timeLeft = 4;
+	cTask.coffee = cappuccino;
+	cTask.state = 1;
+	cTask.timeLeft = 4;
+	mTask.coffee = mocha;
+	mTask.state = 1;
 	mTask.timeLeft = 6;
 	
 	prio1 = xQueueCreate(4, sizeof(brewTask));
@@ -726,42 +551,78 @@ int main(void)
 	coffees[2] = cTask;
 	coffees[3] = mTask;
 	
-	p = &eTask;
 	xQueueSend(prio3, (void*)&eTask, (TickType_t) 0);
-	p = &lTask;
 	xQueueSend(prio1, (void*)&lTask, (TickType_t) 0);
-	p = &cTask;
 	xQueueSend(prio2, (void*)&cTask, (TickType_t) 0);
-	p = &mTask;
 	xQueueSend(prio2, (void*)&mTask, (TickType_t) 0);
 	
-	if(SCHED_TYPE == 1) {
-		running = 1000;
-	}
+	ticks = 0;
+}
+//******************************************************************************
+int main(void)
+{
+	/*!< At this stage the microcontroller clock setting is already configured,
+	   this is done through SystemInit() function which is called from startup
+	   file (startup_stm32f4xx.s) before to branch to application main.
+	   To reconfigure the default setting of SystemInit() function, refer to
+	   system_stm32f4xx.c file
+	 */
+	
+	/*!< Most systems default to the wanted configuration, with the noticeable 
+		exception of the STM32 driver library. If you are using an STM32 with 
+		the STM32 driver library then ensure all the priority bits are assigned 
+		to be preempt priority bits by calling 
+		NVIC_PriorityGroupConfig( NVIC_PriorityGroup_4 ); before the RTOS is started.
+	*/
+
+	GPIO_InitTypeDef GPIO_InitStructure;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_9; //I2S SCL and SDA pins
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource4, GPIO_AF_SPI3);
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD,ENABLE);
+	SysTick_Config(SystemCoreClock/1000);
+
+	GPIO_Init(GPIOD, &GPIO_InitStructure);
+
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
+	codec_init();
+	
+	NVIC_PriorityGroupConfig( NVIC_PriorityGroup_4 );
+	
+	STM_EVAL_LEDInit(LED_BLUE);
+	STM_EVAL_LEDInit(LED_GREEN);
+	STM_EVAL_LEDInit(LED_ORANGE);
+	STM_EVAL_LEDInit(LED_RED);
+	STM_EVAL_PBInit(BUTTON_USER ,BUTTON_MODE_EXTI);
+	
+	TM_Delay_Init();
+	
+	if(COFFEE_START == 0)
+	  initCoffees();
+	else if(COFFEE_START == 1)
+		initDelayCoffees();
+	
+	//STM_EVAL_LEDToggle(LED_GREEN);
+	
+	
 	
 	//Create the task to cycle the leds
-	xTaskCreate( vButtonTask, "Button", configMINIMAL_STACK_SIZE, NULL, BUTTON_PRIORITY, NULL );	
 	//Create the brew tasks for each led
 	xTaskCreate( vScheduler, "Scheduler", configMINIMAL_STACK_SIZE, NULL, schedPrio, NULL);
-	xTaskCreate( vDoubleClickTask, "Double Click", configMINIMAL_STACK_SIZE, NULL, BUTTON_PRIORITY, NULL);
 	
 	//Create semaphore to block debouncing
 	xDebounceLock = xSemaphoreCreateBinary();
 	//Create semaphore to block the led cycling
-	xLEDCycleLock = xSemaphoreCreateBinary();
-	xDoubleClickLock = xSemaphoreCreateBinary();
+  xSchedulerLock = xSemaphoreCreateBinary();
 	
-	//Create the brew led semaphores
-	xLEDBrewLock[0] = xSemaphoreCreateBinary();
-	xLEDBrewLock[1] = xSemaphoreCreateBinary();
-	xLEDBrewLock[2] = xSemaphoreCreateBinary();
-	xLEDBrewLock[3] = xSemaphoreCreateBinary();
 	
 	//Initally take the led semaphore so that when the task starts it's stuck
 	//xSemaphoreTake(xLEDCycleLock, (TickType_t) 0);
 	//Initially have the debounce semaphore open so the first button press can take the lock in the ISR
 	xSemaphoreGive(xDebounceLock);
-	xSemaphoreGive(xLEDBrewLock[BLUE_POSITION]);
 	
 	vTaskStartScheduler();
 	
