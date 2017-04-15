@@ -1,0 +1,82 @@
+<html>
+<body>
+<pre>
+<h1>µVision Build Log</h1>
+<h2>Tool Versions:</h2>
+IDE-Version: µVision V5.22.0.0
+Copyright (C) 2016 ARM Ltd and ARM Germany GmbH. All rights reserved.
+License Information: mitchell hamm, University of Manitoba, LIC=----
+ 
+Tool Versions:
+Toolchain:       MDK-Lite  Version: 5.22
+Toolchain Path:  C:\Keil_v5\ARM\ARMCC\Bin
+C Compiler:      Armcc.exe V5.06 update 4 (build 422)
+Assembler:       Armasm.exe V5.06 update 4 (build 422)
+Linker/Locator:  ArmLink.exe V5.06 update 4 (build 422)
+Library Manager: ArmAr.exe V5.06 update 4 (build 422)
+Hex Converter:   FromElf.exe V5.06 update 4 (build 422)
+CPU DLL:         SARMCM3.DLL V5.22
+Dialog DLL:      DCM.DLL V1.13.9.0
+Target DLL:      STLink\ST-LINKIII-KEIL_SWO.dll V2.0.18.0
+Dialog DLL:      TCM.DLL V1.21.0.0
+ 
+<h2>Project:</h2>
+C:\Users\Mitchell\Documents\STM32\Realtime Systems Assignments\Assignment 3\freertos_project.uvprojx
+Project File Date:  03/29/2017
+
+<h2>Output:</h2>
+*** Using Compiler 'V5.06 update 4 (build 422)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
+Build target 'freertos_project'
+compiling main.c...
+Source\codec.h(79): warning:  #1295-D: Deprecated declaration codec_init - give arg types
+  void codec_init();
+Source\codec.h(80): warning:  #1295-D: Deprecated declaration codec_ctrl_init - give arg types
+  void codec_ctrl_init();
+Source\main.c(165): warning:  #188-D: enumerated type mixed with another type
+  			STM_EVAL_LEDOff(leds[currLed]);
+Source\main.c(186): warning:  #188-D: enumerated type mixed with another type
+  				STM_EVAL_LEDOn(leds[currLed]);
+Source\main.c(348): warning:  #188-D: enumerated type mixed with another type
+  		STM_EVAL_LEDOn(curr.coffee.led);
+Source\main.c(368): warning:  #188-D: enumerated type mixed with another type
+  		STM_EVAL_LEDOff(curr.coffee.led);
+Source\main.c(347): warning:  #177-D: variable "i"  was declared but never referenced
+  		int i = 0;
+Source\main.c(381): warning:  #177-D: variable "pt1"  was declared but never referenced
+  		brewTask *pt1, *pt2, *pt3;
+Source\main.c(381): warning:  #177-D: variable "pt2"  was declared but never referenced
+  		brewTask *pt1, *pt2, *pt3;
+Source\main.c(381): warning:  #177-D: variable "pt3"  was declared but never referenced
+  		brewTask *pt1, *pt2, *pt3;
+Source\main.c(561): warning:  #550-D: variable "I2C_InitStructure"  was set but never used
+  	GPIO_InitTypeDef I2C_InitStructure;
+Source\main.c(726): warning:  #111-D: statement is unreachable
+    return 0;
+Source\main.c(607): warning:  #550-D: variable "p"  was set but never used
+  	brewTask *p;
+Source\main.c: 13 warnings, 0 errors
+linking...
+Program Size: Code=24012 RO-data=488 RW-data=336 ZI-data=79176  
+FromELF: creating hex file...
+".\Output\freertos_project.axf" - 0 Error(s), 13 Warning(s).
+
+<h2>Software Packages used:</h2>
+
+Package Vendor: ARM
+                http://www.keil.com/pack/ARM.CMSIS.5.0.0.pack
+                ARM::CMSIS:CORE:5.0.0
+                CMSIS (Cortex Microcontroller Software Interface Standard)
+   * Component: CORE Version: 5.0.0
+
+<h2>Collection of Component include folders:</h2>
+  C:\Users\Mitchell\Documents\STM32\Realtime Systems Assignments\Assignment 3\RTE\_freertos_project
+  C:\Keil_v5\ARM\PACK\ARM\CMSIS\5.0.0\CMSIS\Include
+  C:\Keil_v5\ARM\PACK\Keil\STM32F4xx_DFP\1.0.8\Device\Include
+
+<h2>Collection of Component Files used:</h2>
+
+   * Component: ARM::CMSIS:CORE:5.0.0
+Build Time Elapsed:  00:00:01
+</pre>
+</body>
+</html>

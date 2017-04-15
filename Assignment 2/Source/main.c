@@ -46,7 +46,7 @@ typedef struct {
 int currLed = 0;
 int codecInit = 0;
 int leds[] = {LED_GREEN, LED_ORANGE, LED_RED, LED_BLUE};
-int brew_times[] = {20, 21, 22, 23};
+int brew_times[] = {2, 21, 22, 23};
 int currently_brewing[] = {0, 0, 0, 0};
 int brew_count = 0;
 int click_count = 0;
@@ -148,16 +148,14 @@ static void vButtonTask( void *pvParameters )
 }
 
 void playSound() {
-	int i = 0;
-	if(codecInit == 0) {
-		codec_init();
+	int j = 0;
+	codec_init();
 		codec_ctrl_init();
 		I2S_Cmd(CODEC_I2S, ENABLE);
 		initFilter(&filt);
 		codecInit = 1;
-	}
 	
-	while(i < 1200000) {
+	while(j < 8400000) {
 		if (SPI_I2S_GetFlagStatus(CODEC_I2S, SPI_I2S_FLAG_TXE)){
 			SPI_I2S_SendData(CODEC_I2S, sample);
 
@@ -171,7 +169,7 @@ void playSound() {
 			}
 			sampleCounter++;
 		}
-		i++;
+		j++;
 	}
 }
 
