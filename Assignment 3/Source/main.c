@@ -31,7 +31,7 @@
 #define NOTEAMPLITUDE 500.0
 
 // Sched types: 0=FPS, 1=EDF, 2=LLF
-int SCHED_TYPE = 0;
+int SCHED_TYPE = 1;
 // Brew types: 0=same start time, 1=diff start time
 int COFFEE_START = 0;
 
@@ -338,7 +338,7 @@ static void vBrewBlueTask(void *pvParameters){
 int running = 0;
 int ticks = 0;
 
-static void vBrewTask(void *pvParameters) {
+static void vBrewTask0(void *pvParameters) {
 	for(;;) {
 				if(xSemaphoreTake(xLEDBrewLock[BLUE_POSITION], (TickType_t) 10) == pdTRUE) {
 		// Pull the brew task from the parameters
@@ -366,6 +366,60 @@ static void vBrewTask(void *pvParameters) {
 		TM_DelayMillis(1000);
 
 		STM_EVAL_LEDOff(curr.coffee.led);
+		xSemaphoreGive(xLEDBrewLock[BLUE_POSITION]);
+		vTaskDelete(NULL);
+	}
+}
+}
+
+static void vBrewTask1(void *pvParameters) {
+	for(;;) {
+				if(xSemaphoreTake(xLEDBrewLock[BLUE_POSITION], (TickType_t) 10) == pdTRUE) {
+		// Pull the brew task from the parameters
+	  int *p = (int*) &(*pvParameters);
+	  int index = *p;
+					
+		STM_EVAL_LEDOn(coffees[index].coffee.led);
+		
+		coffees[index].timeLeft--;
+		
+		if(coffees[index].timeLeft == 0) {
+			coffees[index].timeLeft = coffees[index].coffee.duration;
+			coffees[index].state = 2;
+		} else {
+			coffees[index].state = 1;
+		}
+		
+		TM_DelayMillis(1000);
+
+		STM_EVAL_LEDOff(coffees[index].coffee.led);
+		xSemaphoreGive(xLEDBrewLock[BLUE_POSITION]);
+		vTaskDelete(NULL);
+	}
+}
+}
+
+static void vBrewTask2(void *pvParameters) {
+	for(;;) {
+				if(xSemaphoreTake(xLEDBrewLock[BLUE_POSITION], (TickType_t) 10) == pdTRUE) {
+		// Pull the brew task from the parameters
+	  int *p = (int*) &(*pvParameters);
+	  int index = *p;
+					
+		STM_EVAL_LEDOn(coffees[index].coffee.led);
+		
+		coffees[index].timeLeft--;
+		
+		if(coffees[index].timeLeft == 0) {
+			coffees[index].timeLeft = coffees[index].coffee.duration;
+			coffees[index].state = 2;
+		} else {
+			coffees[index].state = 1;
+		}
+		
+		TM_DelayMillis(1000);
+
+		STM_EVAL_LEDOff(coffees[index].coffee.led);
 		xSemaphoreGive(xLEDBrewLock[BLUE_POSITION]);
 		vTaskDelete(NULL);
 	}
@@ -426,7 +480,7 @@ static void vScheduler(void *pvParameters) {
 					  // Task is ready, run it
 					  found = 1;
 					  task1.state = 0;
-						xTaskCreate(vBrewTask, "Brew task", configMINIMAL_STACK_SIZE, (void*)&task1, brewPrio, NULL);
+						xTaskCreate(vBrewTask0, "Brew task", configMINIMAL_STACK_SIZE, (void*)&task1, brewPrio, NULL);
 				  } else {
 						// Add to the back of the queue
 					  xQueueSendToBack(prio3, (void*)&task1, (TickType_t) 10);
@@ -442,7 +496,7 @@ static void vScheduler(void *pvParameters) {
 					    // Task is ready, run it
 					    found = 1;
 					    task2.state = 0;
-						  xTaskCreate(vBrewTask, "Brew task", configMINIMAL_STACK_SIZE, (void*)&task2, brewPrio, NULL);
+						  xTaskCreate(vBrewTask0, "Brew task", configMINIMAL_STACK_SIZE, (void*)&task2, brewPrio, NULL);
 				    } else {
 						  // Add to the back of the queue
 					    xQueueSendToBack(prio2, (void*)&task2, (TickType_t) 10);
@@ -459,7 +513,7 @@ static void vScheduler(void *pvParameters) {
 					    // Task is ready, run it
 					    found = 1;
 					    task3.state = 0;
-						  xTaskCreate(vBrewTask, "Brew task", configMINIMAL_STACK_SIZE, (void*)&task3, brewPrio, NULL);
+						  xTaskCreate(vBrewTask0, "Brew task", configMINIMAL_STACK_SIZE, (void*)&task3, brewPrio, NULL);
 				    } else {
 						  // Add to the back of the queue
 					    xQueueSendToBack(prio1, (void*)&task3, (TickType_t) 10);
@@ -470,26 +524,32 @@ static void vScheduler(void *pvParameters) {
 		}
 		
 		/************************************************
-		* EARLIEST DEALINE FIRST SCHEDULER
+		* EARLIEST DEADLINE FIRST SCHEDULER
 		* Use earliest deadline to determine which coffee 
 		* to brew next
 		************************************************/
 		else if(SCHED_TYPE == 1) {
+			  for(i = 0; i < 4; i++) {
+					if(ticks % coffees[i].coffee.period == 0) {
+						coffees[i].state = 1;
+					}						
+				}
+				
+				i = 0;
 				while(found == 0 && i < 4) {
-				  if(coffees[i].nextStart <= ticks && coffees[i].coffee.deadline < earliest) {
+				  if(coffees[i].state == 1 && coffees[i].coffee.deadline < earliest) {
 						foundIndex = i;
 						earliest = coffees[i].coffee.deadline;
 				  } 
 				  i++;
 			  }
 					
-				// Only want to switch tasks if we have a ready task with a earlier deadline
-				if(foundIndex != -1 && earliest < running) {
+				if(foundIndex != -1) {
 				  // Task is ready, run it
 				  found = 1;
+					coffees[i].state = 0;
 				  running = earliest;
-					coffees[foundIndex].nextStart = ticks + coffees[foundIndex].coffee.period;
-					xTaskCreate(vBrewTask, "Brew task", configMINIMAL_STACK_SIZE, (void*)&coffees[foundIndex], currRunning, NULL);
+					xTaskCreate(vBrewTask1, "Brew task", configMINIMAL_STACK_SIZE, (void*)&foundIndex, brewPrio, NULL);
 				}
 		}
 		
@@ -513,7 +573,7 @@ static void vScheduler(void *pvParameters) {
 				  found = 1;
 				  running = laxity;
 					coffees[foundIndex].nextStart = ticks + coffees[foundIndex].coffee.period;
-					xTaskCreate(vBrewTask, "Brew task", configMINIMAL_STACK_SIZE, (void*)&coffees[foundIndex], brewPrio, NULL);
+					xTaskCreate(vBrewTask2, "Brew task", configMINIMAL_STACK_SIZE, (void*)&coffees[foundIndex], brewPrio, NULL);
 				}
 		}
 		
