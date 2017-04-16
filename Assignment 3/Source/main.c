@@ -33,7 +33,7 @@
 // Sched types: 0=FPS, 1=EDF, 2=LLF
 int SCHED_TYPE = 1;
 // Brew types: 0=same start time, 1=diff start time
-int COFFEE_START = 0;
+int COFFEE_START = 1;
 
 int schedPrio = 5;
 int brewPrio = 1;
@@ -76,6 +76,7 @@ int prio2Count = 2;
 int prio3Count = 1;
 int running = 0;
 int ticks = 0;
+int coffeeCount = 0;
 
 
 int currLed = 0;
@@ -227,12 +228,15 @@ static void vScheduler(void *pvParameters) {
 				if(ticks == 10) {
 					xQueueSend(prio1, (void*)&coffees[1], (TickType_t) 0);
 					coffees[1] = lTask;
+					coffeeCount++;
 				} else if(ticks == 20) {
 					xQueueSend(prio2, (void*)&coffees[2], (TickType_t) 0);
 					coffees[2] = cTask;
+					coffeeCount++;
 				} else if(ticks == 30) {
 					xQueueSend(prio2, (void*)&coffees[3], (TickType_t) 0);
 					coffees[3] = mTask;
+					coffeeCount++;
 				}
 			}
 		/************************************************
@@ -328,14 +332,14 @@ static void vScheduler(void *pvParameters) {
 		************************************************/
 		else if(SCHED_TYPE == 1) {
 			// Update any task states if necessary
-			  for(i = 0; i < 4; i++) {
+			  for(i = 0; i < coffeeCount; i++) {
 					if(ticks % coffees[i].coffee.period == 0) {
 						coffees[i].state = 1;
 					}						
 				}
 				
 				i = 0;
-				while(found == 0 && i < 4) {
+				while(found == 0 && i < coffeeCount) {
 				  if(coffees[i].state == 1 && coffees[i].coffee.deadline < earliest) {
 						foundIndex = i;
 						earliest = coffees[i].coffee.deadline;
@@ -359,14 +363,14 @@ static void vScheduler(void *pvParameters) {
 		else if(SCHED_TYPE == 2) {
 			
 			// Update any task states if necessary
-			for(i = 0; i < 4; i++) {
+			for(i = 0; i < coffeeCount; i++) {
 					if(ticks % coffees[i].coffee.period == 0) {
 						coffees[i].state = 1;
 					}						
 				}
 				
 				i = 0;
-			while(found == 0 && i < 4) {
+			while(found == 0 && i < coffeeCount) {
 				  if(coffees[i].state == 1 && coffees[i].coffee.deadline - coffees[i].timeLeft <= laxity) {
 						foundIndex = i;
 						laxity = coffees[i].coffee.deadline - coffees[i].timeLeft;
@@ -502,6 +506,7 @@ void initDelayCoffees() {
 	xQueueSend(prio3, (void*)&eTask, (TickType_t) 0);
 	
 	ticks = 0;
+	coffeeCount = 1;
 }
 
 void initCoffees() {
@@ -557,6 +562,7 @@ void initCoffees() {
 	xQueueSend(prio2, (void*)&mTask, (TickType_t) 0);
 	
 	ticks = 0;
+	coffeeCount = 4;
 }
 //******************************************************************************
 int main(void)
