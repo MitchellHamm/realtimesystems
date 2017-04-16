@@ -159,6 +159,7 @@ static void vBrewTask0(void *pvParameters) {
 		if(curr.timeLeft == 0) {
 			curr.timeLeft = curr.coffee.duration;
 			curr.state = 2;
+			playSound();
 		} else {
 			curr.state = 1;
 		}
