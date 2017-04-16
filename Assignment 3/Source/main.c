@@ -31,9 +31,9 @@
 #define NOTEAMPLITUDE 500.0
 
 // Sched types: 0=FPS, 1=EDF, 2=LLF
-int SCHED_TYPE = 1;
+int SCHED_TYPE = 0;
 // Brew types: 0=same start time, 1=diff start time
-int COFFEE_START = 1;
+int COFFEE_START = 0;
 
 int schedPrio = 5;
 int brewPrio = 1;
